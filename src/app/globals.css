@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Caveat:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #003354;
+  --color-primary-dark: #002B49;
+  --color-primary-light: #004A70;
+  --color-secondary: #007DA8;
+  --color-secondary-light: #16B8C8;
+  --color-accent: #FFC43D;
+  --color-accent-hover: #F4B426;
+  --color-background: #FFFFFF;
+  --color-background-soft: #F0F9FD;
+  --color-background-light: #E8F5FB;
+  --color-text-primary: #003354;
+  --color-text-secondary: #285C7D;
+  --color-text-muted: #6797B4;
+  --color-border: #D5EDF7;
+  --color-success: #1FC98A;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  overflow-x: hidden;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Micro-interaction & Motion Utility Classes */
+.hover-lift {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+}
+
+.active-press:active {
+  transform: scale(0.97);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-3px); }
+  40%, 80% { transform: translateX(3px); }
+}
+
+.animate-shake {
+  animation: shake 350ms ease-in-out;
+}
