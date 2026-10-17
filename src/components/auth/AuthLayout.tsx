@@ -28,7 +28,7 @@ export default function AuthLayout({ title, highlight, description, bgImage, chi
           />
 
           <div className="relative z-10 space-y-4 max-w-lg">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight lg:leading-none">
               {title} {highlight && <span className="text-accent">{highlight}</span>}
             </h1>
             <p className="text-white/85 text-sm sm:text-base leading-relaxed">

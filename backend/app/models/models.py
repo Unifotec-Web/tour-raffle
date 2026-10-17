@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Numeric, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Integer, Numeric, Boolean, DateTime, ForeignKey, Text, Index
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
 
@@ -11,11 +11,29 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
-    country = Column(String(100), default="United States")
+    country = Column(String(100), nullable=False)
     role = Column(String(50), default="user") # user, admin, super_admin
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    consented_at = Column(DateTime, nullable=False)
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+class AuthAttempt(Base):
+    __tablename__ = "auth_attempts"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), nullable=False)
+    ip_address = Column(String(45), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    __table_args__ = (Index("ix_auth_attempts_email_created", "email", "created_at"), Index("ix_auth_attempts_ip_created", "ip_address", "created_at"))
 
 class Campaign(Base):
     __tablename__ = "campaigns"

@@ -1,29 +1,23 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+from datetime import datetime, timezone
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.config import settings
-from app.models.models import User
+from app.core.security import token_digest
+from app.models.models import User, AuthSession
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
-
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
+    token = request.cookies.get("tour_raffle_session")
+    if not token:
         raise credentials_exception
-
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
+    session = db.query(AuthSession).filter(AuthSession.token_hash == token_digest(token), AuthSession.revoked_at.is_(None)).first()
+    if session is None or session.expires_at <= datetime.now(timezone.utc).replace(tzinfo=None):
+        raise credentials_exception
+    user = db.get(User, session.user_id)
+    if user is None or not user.is_active:
         raise credentials_exception
     return user
 

@@ -1,26 +1,36 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.core.database import engine, Base
-from app.models import models
-
-# Create database tables
-Base.metadata.create_all(bind=engine)
+from app.api.auth import router as auth_router
+from app.api.deps import get_current_user, get_current_admin
+from app.models.models import User
+from app.schemas.schemas import UserResponse
+from fastapi import Depends
 
 app = FastAPI(
     title=settings.APP_NAME,
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/docs" if settings.APP_ENV != "production" else None,
+    redoc_url=None,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
+
+app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
+
+@app.get("/api/v1/users/me", response_model=UserResponse)
+def me(user: User = Depends(get_current_user)):
+    return user
+
+@app.get("/api/v1/admin/me", response_model=UserResponse)
+def admin_me(user: User = Depends(get_current_admin)):
+    return user
 
 @app.get("/health")
 def health_check():

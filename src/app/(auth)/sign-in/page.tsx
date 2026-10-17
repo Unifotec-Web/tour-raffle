@@ -4,9 +4,30 @@ import React, { useState } from 'react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { authRequest } from '@/lib/auth';
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+  const router = useRouter();
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setError('');
+    const fields = new FormData(event.currentTarget);
+    try {
+      await authRequest('login', { email: fields.get('email'), password: fields.get('password') });
+      router.push('/dashboard');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed.');
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <AuthLayout
@@ -20,11 +41,13 @@ export default function SignInPage() {
           <p className="text-mutedBlue text-xs mt-1">Enter your details to access your account.</p>
         </div>
 
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-primary mb-1">Email Address</label>
             <input
               type="email"
+              name="email"
+              required
               placeholder="Enter your email address"
               className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary placeholder-mutedBlue focus:outline-none focus:border-secondary transition-colors"
             />
@@ -35,6 +58,8 @@ export default function SignInPage() {
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
+                name="password"
+                required
                 placeholder="Enter your password"
                 className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 pl-3.5 pr-10 text-sm text-primary placeholder-mutedBlue focus:outline-none focus:border-secondary transition-colors"
               />
@@ -59,10 +84,12 @@ export default function SignInPage() {
 
           <button
             type="submit"
+            disabled={pending}
             className="w-full bg-accent hover:bg-accent-hover text-primary font-bold py-3 rounded-xl shadow-md transition-colors text-sm"
           >
-            Sign In
+            {pending ? 'Signing In…' : 'Sign In'}
           </button>
+          {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
         </form>
 
         <div className="relative flex py-1 items-center">
@@ -72,10 +99,10 @@ export default function SignInPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-borderBlue bg-lightBlue hover:bg-white text-primary text-xs font-semibold transition-colors shadow-sm">
+          <button type="button" disabled title="Social sign-in is not available yet" className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-borderBlue bg-lightBlue hover:bg-white text-primary text-xs font-semibold transition-colors shadow-sm">
             Google
           </button>
-          <button className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-borderBlue bg-lightBlue hover:bg-white text-primary text-xs font-semibold transition-colors shadow-sm">
+          <button type="button" disabled title="Social sign-in is not available yet" className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-borderBlue bg-lightBlue hover:bg-white text-primary text-xs font-semibold transition-colors shadow-sm">
             Facebook
           </button>
         </div>
