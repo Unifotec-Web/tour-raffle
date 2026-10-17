@@ -89,8 +89,7 @@ def prepare(campaign_id: UUID, request: Request, user: User = Depends(get_curren
                       "eligibility": "active user; confirmed entry; redeemed owned coupon",
                       "winner_policy": "one per participant; entry weighted", "algorithm_version": ALGORITHM_VERSION},
             "entries": [{"entry_id": str(r[0]), "user_id": str(r[1]), "coupon_id": str(r[2])} for r in rows]})
-        seed = secrets.token_bytes(32)
-        run = DrawRun(campaign_id=campaign_id, status="prepared", seed=seed, seed_hash=hashlib.sha256(seed).hexdigest(), algorithm_version=ALGORITHM_VERSION, prepared_by=user.id, prepared_at=utcnow())
+        run = DrawRun(campaign_id=campaign_id, status="prepared", seed=None, seed_hash=None, algorithm_version=ALGORITHM_VERSION, prepared_by=user.id, prepared_at=utcnow())
         db.add(run)
         db.flush()
         db.add(DrawSnapshot(run_id=run.id, content=content, hash=digest(content), entry_count=len(rows), participant_count=participants, winner_count=campaign.winner_count, created_at=utcnow()))
@@ -109,6 +108,14 @@ def approve(campaign_id: UUID, request: Request, user: User = Depends(get_curren
     try:
         run = locked(db, campaign_id)
         if run.status == "prepared":
+            snapshot = db.get(DrawSnapshot, run.id)
+            if digest(snapshot.content) != snapshot.hash or run.algorithm_version != ALGORITHM_VERSION:
+                raise HTTPException(409, "Frozen draw inputs failed integrity verification")
+            if run.seed is not None or run.seed_hash is not None:
+                raise HTTPException(409, "Legacy prepared seed requires manual review")
+            seed = secrets.token_bytes(32)
+            run.seed = seed
+            run.seed_hash = hashlib.sha256(seed).hexdigest()
             run.status = "approved"
             run.approved_by = user.id
             run.approved_at = utcnow()
@@ -130,9 +137,13 @@ def execute(campaign_id: UUID, request: Request, user: User = Depends(get_curren
         if run.status != "approved":
             raise HTTPException(409, "Draw approval is required")
         snapshot = db.get(DrawSnapshot, run.id)
-        if digest(snapshot.content) != snapshot.hash or hashlib.sha256(run.seed).hexdigest() != run.seed_hash:
+        if (digest(snapshot.content) != snapshot.hash or run.seed is None or len(run.seed) != 32
+                or hashlib.sha256(run.seed).hexdigest() != run.seed_hash):
             raise HTTPException(409, "Frozen draw inputs failed integrity verification")
-        winners = select_winners(snapshot.content, run.seed)
+        try:
+            winners = select_winners(snapshot.content, run.seed, run.algorithm_version)
+        except ValueError as error:
+            raise HTTPException(409, str(error)) from error
         for winner in winners:
             db.add(DrawWinner(run_id=run.id, rank=winner["rank"], entry_id=UUID(winner["entry_id"]), user_id=UUID(winner["user_id"])))
         db.flush()
@@ -147,7 +158,7 @@ def execute(campaign_id: UUID, request: Request, user: User = Depends(get_curren
         if not isinstance(error, HTTPException):
             try:
                 failed_run = db.scalar(select(DrawRun).where(DrawRun.campaign_id == campaign_id))
-                if failed_run is not None:
+                if failed_run is not None and failed_run.status == "approved":
                     snapshot = db.get(DrawSnapshot, failed_run.id)
                     db.add(AuditLog(admin_email=user.email, action="draw.failure",
                         details=canonical({"campaign_id": str(campaign_id), "draw_id": str(failed_run.id),

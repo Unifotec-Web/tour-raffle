@@ -14,8 +14,14 @@ def digest(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
-def select_winners(content: str, seed: bytes) -> list[dict]:
+def select_winners(content: str, seed: bytes, algorithm_version: str = ALGORITHM_VERSION) -> list[dict]:
+    if algorithm_version != ALGORITHM_VERSION:
+        raise ValueError("Unsupported frozen draw algorithm version")
+    if len(seed) != 32:
+        raise ValueError("Draw seed must contain 256 bits")
     snapshot = json.loads(content)
+    if snapshot["rules"]["algorithm_version"] != algorithm_version:
+        raise ValueError("Snapshot algorithm version does not match the draw run")
     pool = list(snapshot["entries"])
     winners = []
     counter = 0
@@ -26,7 +32,7 @@ def select_winners(content: str, seed: bytes) -> list[dict]:
         # Rejection sampling avoids modulo bias; HMAC gives reproducible recovery.
         ceiling = (1 << 256) - ((1 << 256) % size)
         while True:
-            block = hmac.new(seed, f"{ALGORITHM_VERSION}:{counter}".encode(), hashlib.sha256).digest()
+            block = hmac.new(seed, f"{algorithm_version}:{counter}".encode(), hashlib.sha256).digest()
             counter += 1
             number = int.from_bytes(block, "big")
             if number < ceiling:

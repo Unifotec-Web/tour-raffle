@@ -1,5 +1,7 @@
 # Milestone 4 — recoverable local/test draws
 
+This records the implementation and verification at commit `9f784e0`. The later focused seed and algorithm review is documented in `DRAW_INTEGRITY_REVIEW.md`; that review supersedes the seed timing described below.
+
 Branch: `codex/recoverable-draw-processing`, based on verified milestone 3 commit `bcb3efb`.
 
 ## Implemented
