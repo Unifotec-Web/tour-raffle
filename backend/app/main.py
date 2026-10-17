@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.auth import router as auth_router
 from app.api.campaigns import router as campaigns_router
+from app.api.admin_campaigns import router as admin_campaigns_router
 from app.api.deps import get_current_user, get_current_admin
 from app.models.models import User
 from app.schemas.schemas import UserResponse
@@ -19,12 +20,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type"],
 )
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(campaigns_router, prefix=settings.API_V1_PREFIX)
+app.include_router(admin_campaigns_router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/api/v1/users/me", response_model=UserResponse)
 def me(user: User = Depends(get_current_user)):

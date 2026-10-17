@@ -1,6 +1,6 @@
 # Tour Raffle API
 
-The backend provides PostgreSQL migrations, authentication, campaign progress, member coupon and entry lists, and transactional coupon redemption. Coupons can be issued only through a local/test fixture command. It does not charge cards or perform draws. See `MILESTONE_2.md` at the repository root for verified behavior and remaining gaps.
+The backend provides PostgreSQL migrations, authentication, campaign progress, member coupon and entry lists, transactional coupon redemption, and admin-only campaign management. Coupons can be issued only through a local/test fixture command. It does not charge cards or perform draws. See `MILESTONE_3.md` at the repository root for the latest verification and remaining gaps.
 
 ## Local run
 

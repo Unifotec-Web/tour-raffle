@@ -32,7 +32,7 @@ def entry_response(entry: Entry, campaign: Campaign, coupon: Coupon) -> EntryRes
 
 @router.get("/campaigns/featured/progress", response_model=CampaignProgress)
 def featured_progress(db: Session = Depends(get_db)):
-    campaign = db.execute(select(Campaign).where(Campaign.is_featured.is_(True))).scalar_one_or_none()
+    campaign = db.execute(select(Campaign).where(Campaign.is_featured.is_(True), Campaign.status.in_(["scheduled", "open", "closed"]))).scalar_one_or_none()
     if campaign is None:
         raise HTTPException(status_code=404, detail="No featured campaign")
     return progress(campaign)

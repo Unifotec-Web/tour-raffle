@@ -10,4 +10,4 @@ if settings.APP_ENV != "test" or (target.database, target.host, target.port, tar
     raise SystemExit("Browser reset requires APP_ENV=test and the disposable localhost database")
 
 with engine.begin() as connection:
-    connection.execute(text("TRUNCATE users, campaigns, auth_attempts RESTART IDENTITY CASCADE"))
+    connection.execute(text("TRUNCATE users, campaigns, auth_attempts, audit_logs RESTART IDENTITY CASCADE"))

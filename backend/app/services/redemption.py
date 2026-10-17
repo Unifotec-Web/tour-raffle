@@ -1,12 +1,13 @@
 """Campaign lifecycle and atomic, idempotent coupon redemption."""
 from datetime import datetime, timezone
+import json
 import secrets
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.models import Campaign, Coupon, Entry
+from app.models.models import AuditLog, Campaign, Coupon, Entry
 
 
 class RedemptionError(Exception):
@@ -77,6 +78,7 @@ def redeem(db: Session, code: str, owner_id: UUID) -> tuple[Entry, bool]:
         campaign.updated_at = now
         if campaign.current_entries == campaign.max_capacity:
             transition_campaign(campaign, "closed", now)
+            db.add(AuditLog(admin_email="system", action="campaign.status", details=json.dumps({"campaign_id": str(campaign.id), "changes": {"from": "open", "to": "closed", "reason": "capacity reached by redemption"}}), ip_address="system", created_at=now))
         db.add(entry)
         db.flush()
         db.commit()
