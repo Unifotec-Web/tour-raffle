@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Numeric, Boolean, DateTime, ForeignKey, Text, Index
+from sqlalchemy import Column, String, Integer, Numeric, Boolean, DateTime, ForeignKey, Text, Index, CheckConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
 
@@ -45,12 +45,23 @@ class Campaign(Base):
     prize_value = Column(Numeric(10, 2), nullable=False)
     currency = Column(String(10), default="USD")
     coupon_price = Column(Numeric(10, 2), default=10.00)
-    max_capacity = Column(Integer, default=450000)
-    current_entries = Column(Integer, default=0)
-    status = Column(String(50), default="active") # active, scheduled, closed, completed
+    max_capacity = Column(Integer, default=450000, nullable=False)
+    current_entries = Column(Integer, default=0, nullable=False)
+    winner_count = Column(Integer, default=1, nullable=False)
+    is_featured = Column(Boolean, default=False, nullable=False)
+    status = Column(String(50), default="draft", nullable=False)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    __table_args__ = (
+        CheckConstraint("max_capacity > 0", name="campaign_capacity_positive"),
+        CheckConstraint("current_entries >= 0 AND current_entries <= max_capacity", name="campaign_entries_within_capacity"),
+        CheckConstraint("winner_count > 0 AND winner_count <= max_capacity", name="campaign_winners_within_capacity"),
+        CheckConstraint("start_date < end_date", name="campaign_dates_ordered"),
+        CheckConstraint("status IN ('draft', 'scheduled', 'open', 'closed', 'completed', 'cancelled')", name="campaign_status_valid"),
+        Index("uq_campaigns_one_featured", "is_featured", unique=True, postgresql_where=text("is_featured"), sqlite_where=text("is_featured")),
+    )
 
 class Coupon(Base):
     __tablename__ = "coupons"
@@ -59,16 +70,17 @@ class Coupon(Base):
     code = Column(String(64), unique=True, index=True, nullable=False)
     campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    status = Column(String(50), default="active") # active, redeemed, expired, reserved
+    status = Column(String(50), default="active", nullable=False)
     purchase_date = Column(DateTime, default=datetime.utcnow)
     valid_until = Column(DateTime, nullable=False)
+    __table_args__ = (CheckConstraint("status IN ('active', 'redeemed', 'expired')", name="coupon_status_valid"),)
 
 class Entry(Base):
     __tablename__ = "entries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     entry_code = Column(String(64), unique=True, index=True, nullable=False)
-    coupon_id = Column(UUID(as_uuid=True), ForeignKey("coupons.id"), nullable=False)
+    coupon_id = Column(UUID(as_uuid=True), ForeignKey("coupons.id"), nullable=False, unique=True)
     campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     status = Column(String(50), default="confirmed") # confirmed, pending, invalid

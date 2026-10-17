@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import Link from 'next/link';
 import { ShieldCheck, Bell, HelpCircle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
@@ -9,15 +9,33 @@ export default function RegisterEntryPage() {
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [error, setError] = useState('');
+  const [entryCode, setEntryCode] = useState('');
+  const [created, setCreated] = useState(true);
+  useEffect(() => { setCode(new URLSearchParams(window.location.search).get('code') || ''); }, []);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) return;
+    setError('');
     setVerifying(true);
-    setTimeout(() => {
-      setVerifying(false);
+    try {
+      const response = await fetch('/api/v1/coupons/redeem', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+      const result = await response.json();
+      if (response.status === 401) throw new Error('Your session has expired. Please sign in again.');
+      if (!response.ok) throw new Error(result.detail || 'Unable to register this coupon.');
+      setEntryCode(result.entry.entry_code);
+      setCreated(result.created);
       setVerified(true);
-    }, 2000);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to register this coupon.');
+    } finally {
+      setVerifying(false);
+    }
   };
 
   return (
@@ -44,12 +62,14 @@ export default function RegisterEntryPage() {
             <h3 className="text-xl font-extrabold text-primary tracking-tight">Coupon Code</h3>
 
             <form onSubmit={handleRegister} className="space-y-4">
+              {error && <p role="alert" className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-xs font-semibold text-red-500">{error}</p>}
+              {error.includes('session has expired') && <Link href="/sign-in" className="text-secondary text-xs font-bold hover:underline">Sign in again</Link>}
               <div>
                 <input
                   type="text"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="e.g. TRF-7X9K-382P-8Q6L"
+                  placeholder="Enter your coupon code"
                   className="w-full bg-lightBlue border border-borderBlue rounded-xl py-3 px-4 text-sm text-primary placeholder-mutedBlue focus:outline-none focus:border-secondary transition-colors font-mono font-bold"
                 />
               </div>
@@ -115,7 +135,8 @@ export default function RegisterEntryPage() {
 
             <div>
               <h1 className="text-2xl font-extrabold text-primary tracking-tight">Entry Confirmed!</h1>
-              <p className="text-mutedBlue text-xs mt-1">Your coupon code is valid and you are successfully entered in the raffle.</p>
+              <p className="text-mutedBlue text-xs mt-1">{created ? 'Your coupon code is valid and you are successfully entered in the raffle.' : 'This coupon was already registered. Your existing entry is shown below.'}</p>
+              <p className="text-secondary text-xs font-mono font-bold mt-2">{entryCode}</p>
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">

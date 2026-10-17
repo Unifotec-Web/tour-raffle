@@ -1,5 +1,7 @@
 # Tour Raffle baseline and phased plan
 
+The authentication baseline below is historical and was committed locally as `f17f392`. Milestone 2 campaign and redemption implementation and verification are recorded in [MILESTONE_2.md](MILESTONE_2.md).
+
 ## Scope and evidence
 
 Audit date: 17 October 2026. The existing Next.js App Router includes 58 page files, including dynamic raffle and admin-user pages. `src/components/` holds the shared navigation, footer, auth, account, dashboard, admin, and home sections. The design is in the existing JSX, Tailwind config, CSS tokens, Unsplash URLs, and `public/hero.png`. The nine PNG design references named in `Tour_Raffle.md` are absent from this checkout. The visual baseline used below is the original Git revision `c29c11017cc4e9f919b64a4873f3e1cdca1abc83`; it cannot establish a match to the missing references. The only local PNGs are `hero.png` and `public/hero.png`.

@@ -17,9 +17,6 @@ def token_digest(token: str) -> str:
     return sha256(token.encode()).hexdigest()
 
 def generate_secure_coupon_code() -> str:
-    # Generates format TRF-XXXX-XXXX-XXXX securely using python secrets
-    part1 = secrets.token_hex(2).upper()
-    part2 = secrets.token_hex(2).upper()
-    part3 = secrets.token_hex(2).upper()
-    part4 = secrets.token_hex(2).upper()
-    return f"TRF-{part1}-{part2}-{part3}-{part4}"
+    # 128 random bits; issued only by local/test fixtures until commerce exists.
+    value = secrets.token_hex(16).upper()
+    return "TRF-" + "-".join(value[index:index + 8] for index in range(0, 32, 8))
