@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     SESSION_COOKIE_SECURE: bool = False
     SESSION_HOURS: int = 8
     FRONTEND_URL: str = "http://localhost:3000"
+    ENABLE_LOCAL_DRAW: bool = False
 
     @model_validator(mode="after")
     def validate_production(self):

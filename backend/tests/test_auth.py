@@ -21,7 +21,7 @@ if test_url:
     if not inspect(engine).has_table("alembic_version"):
         raise RuntimeError("Run Alembic migrations before PostgreSQL tests")
     with engine.begin() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0003_featured_campaign"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0004_recoverable_draws"
         connection.execute(text("TRUNCATE users, auth_attempts RESTART IDENTITY CASCADE"))
 else:
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)

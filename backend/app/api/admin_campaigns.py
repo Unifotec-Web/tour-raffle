@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import check_origin
 from app.api.deps import get_current_admin
 from app.core.database import get_db
-from app.models.models import AuditLog, Campaign, Entry, User
+from app.models.models import AuditLog, Campaign, DrawRun, Entry, User
 from app.schemas.schemas import CampaignAdminCreate, CampaignAdminResponse, CampaignAdminUpdate, CampaignStatusChange
 from app.services.redemption import TRANSITIONS, transition_campaign, utcnow
 
@@ -96,6 +96,8 @@ def edit_campaign(campaign_id: UUID, payload: CampaignAdminUpdate, request: Requ
         actual = {key: {"before": before[key], "after": value} for key, value in changes.items() if before[key] != value}
         if not actual:
             raise HTTPException(status_code=422, detail="No changes supplied")
+        if db.scalar(select(DrawRun.id).where(DrawRun.campaign_id == campaign_id)) is not None and actual.keys() & (LOCKED_AFTER_ENTRY | {"max_capacity"}):
+            raise HTTPException(status_code=409, detail="Draw rules are frozen after snapshot preparation")
         if entry_count and LOCKED_AFTER_ENTRY.intersection(actual):
             raise HTTPException(status_code=409, detail="Prize, destination, price, winners and dates are locked after entries exist")
         capacity = changes.get("max_capacity", campaign.max_capacity)

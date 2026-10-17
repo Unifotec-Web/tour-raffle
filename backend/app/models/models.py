@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Numeric, Boolean, DateTime, ForeignKey, Text, Index, CheckConstraint, text
+from sqlalchemy import Column, String, Integer, Numeric, Boolean, DateTime, ForeignKey, Text, Index, CheckConstraint, LargeBinary, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
 
@@ -106,3 +106,44 @@ class AuditLog(Base):
     details = Column(Text)
     ip_address = Column(String(50), default="127.0.0.1")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class DrawRun(Base):
+    __tablename__ = "draw_runs"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id"), nullable=False, unique=True)
+    status = Column(String(20), nullable=False, default="prepared")
+    seed = Column(LargeBinary, nullable=False)
+    seed_hash = Column(String(64), nullable=False)
+    algorithm_version = Column(String(40), nullable=False)
+    prepared_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    executed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    published_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    prepared_at = Column(DateTime, nullable=False)
+    approved_at = Column(DateTime)
+    executed_at = Column(DateTime)
+    published_at = Column(DateTime)
+    __table_args__ = (CheckConstraint("status IN ('prepared', 'approved', 'completed', 'published')", name="draw_status_valid"),)
+
+class DrawSnapshot(Base):
+    __tablename__ = "draw_snapshots"
+    run_id = Column(UUID(as_uuid=True), ForeignKey("draw_runs.id"), primary_key=True)
+    content = Column(Text, nullable=False)
+    hash = Column(String(64), nullable=False)
+    entry_count = Column(Integer, nullable=False)
+    participant_count = Column(Integer, nullable=False)
+    winner_count = Column(Integer, nullable=False)
+    created_at = Column(DateTime, nullable=False)
+
+class DrawWinner(Base):
+    __tablename__ = "draw_winners"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("draw_runs.id"), nullable=False)
+    rank = Column(Integer, nullable=False)
+    entry_id = Column(UUID(as_uuid=True), ForeignKey("entries.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    __table_args__ = (
+        UniqueConstraint("run_id", "rank", name="uq_draw_rank"),
+        UniqueConstraint("run_id", "entry_id", name="uq_draw_entry"),
+        UniqueConstraint("run_id", "user_id", name="uq_draw_participant"),
+    )
