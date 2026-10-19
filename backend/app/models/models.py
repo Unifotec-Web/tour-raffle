@@ -224,3 +224,34 @@ class DrawWinner(Base):
         UniqueConstraint("run_id", "entry_id", name="uq_draw_entry"),
         UniqueConstraint("run_id", "user_id", name="uq_draw_participant"),
     )
+
+class WinnerClaim(Base):
+    __tablename__ = "winner_claims"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    winner_id = Column(UUID(as_uuid=True), ForeignKey("draw_winners.id"), nullable=False, unique=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(30), nullable=False, default="submitted")
+    contact_name = Column(String(255), nullable=False)
+    contact_email = Column(String(255), nullable=False)
+    phone = Column(String(40))
+    preference_note = Column(Text)
+    fulfillment_reference = Column(String(255))
+    fulfillment_evidence = Column(Text)
+    submitted_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+    __table_args__ = (
+        CheckConstraint("status IN ('submitted', 'under_review', 'needs_information', 'approved', 'rejected', 'fulfillment_pending', 'fulfilled')", name="winner_claim_status_valid"),
+        CheckConstraint("status <> 'fulfilled' OR (length(trim(coalesce(fulfillment_reference, ''))) > 0 AND length(trim(coalesce(fulfillment_evidence, ''))) > 0)", name="winner_claim_fulfillment_evidence_required"),
+    )
+
+class ClaimEvent(Base):
+    __tablename__ = "claim_events"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    claim_id = Column(UUID(as_uuid=True), ForeignKey("winner_claims.id"), nullable=False, index=True)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    actor_email = Column(String(255), nullable=False)
+    from_status = Column(String(30))
+    to_status = Column(String(30), nullable=False)
+    reason = Column(Text, nullable=False)
+    fulfillment_reference = Column(String(255))
+    created_at = Column(DateTime, nullable=False)

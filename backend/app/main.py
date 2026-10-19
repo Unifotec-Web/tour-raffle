@@ -6,6 +6,7 @@ from app.api.campaigns import router as campaigns_router
 from app.api.admin_campaigns import router as admin_campaigns_router
 from app.api.draws import admin_router as admin_draws_router, public_router as draws_router
 from app.api.orders import router as orders_router
+from app.api.claims import router as claims_router
 from app.api.deps import get_current_user, get_current_admin
 from app.models.models import User
 from app.schemas.schemas import UserResponse
@@ -32,6 +33,7 @@ app.include_router(admin_campaigns_router, prefix=settings.API_V1_PREFIX)
 app.include_router(admin_draws_router, prefix=settings.API_V1_PREFIX)
 app.include_router(draws_router, prefix=settings.API_V1_PREFIX)
 app.include_router(orders_router, prefix=settings.API_V1_PREFIX)
+app.include_router(claims_router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/api/v1/users/me", response_model=UserResponse)
 def me(user: User = Depends(get_current_user)):

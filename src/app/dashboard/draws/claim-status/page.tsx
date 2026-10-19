@@ -1,67 +1,19 @@
-import React from 'react';
+'use client';
+import {Suspense,useEffect,useState} from 'react';
+import {useSearchParams} from 'next/navigation';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import Link from 'next/link';
-import { CheckCircle2, Clock, Trophy } from 'lucide-react';
-
-export default function PrizeClaimStatusPage() {
-  const steps = [
-    { title: 'Claim Submitted', desc: 'Oct 15, 2025 10:34 AM', status: 'Completed' },
-    { title: 'Identity Verification', desc: 'Oct 15, 2025 02:17 PM', status: 'Completed' },
-    { title: 'Travel Details Confirmation', desc: 'Pending review by our support team', status: 'Pending' },
-    { title: 'Voucher Issuance', desc: 'Pending travel confirmation', status: 'Pending' },
-    { title: 'Travel Date', desc: 'Scheduled upon confirmation', status: 'Pending' },
-  ];
-
-  return (
-    <DashboardLayout>
-      <div className="space-y-8 max-w-3xl mx-auto">
-
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">Prize Claim Status</h1>
-          <p className="text-mutedBlue text-sm">Track the progress of your prize claim.</p>
-        </div>
-
-        <div className="bg-white border border-borderBlue rounded-2xl p-8 sm:p-10 shadow-card space-y-6">
-          <div className="bg-lightBlue border border-borderBlue rounded-xl p-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-accent text-primary flex items-center justify-center font-bold">
-                <Trophy className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-primary text-base">Maldives Getaway (7 Days)</h4>
-                <p className="text-mutedBlue text-xs">Winning Code: TRF-7XSK-D82P-8Q6L • Claim Submitted: Oct 15, 2025</p>
-              </div>
-            </div>
-            <span className="bg-warning text-primary text-xs font-bold px-3 py-1 rounded-full">In Progress</span>
-          </div>
-
-          <div className="space-y-4 pt-4">
-            {steps.map((s, idx) => (
-              <div key={idx} className="flex items-center justify-between p-4 bg-lightBlue/60 border border-borderBlue rounded-xl">
-                <div className="flex items-center gap-3.5">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${s.status === 'Completed' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
-                    {s.status === 'Completed' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-primary text-sm">{s.title}</h4>
-                    <p className="text-mutedBlue text-xs">{s.desc}</p>
-                  </div>
-                </div>
-                <span className={`text-xs font-bold ${s.status === 'Completed' ? 'text-success' : 'text-warning'}`}>
-                  {s.status}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-4 text-center">
-            <Link href="/dashboard" className="text-secondary font-bold text-xs hover:underline">
-              ← Back to Dashboard
-            </Link>
-          </div>
-        </div>
-
-      </div>
-    </DashboardLayout>
-  );
+import {CheckCircle2,Clock,Trophy} from 'lucide-react';
+import {orderRequest} from '@/lib/orders';
+type Event={from_status:string|null;to_status:string;reason:string|null;created_at:string};
+type Claim={id:string;campaign_name:string;status:string;submitted_at:string;history:Event[]};
+function PrizeClaimStatusContent(){
+ const id=useSearchParams().get('claim');const [claim,setClaim]=useState<Claim|null>(null);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');const [reply,setReply]=useState('');const [error,setError]=useState('');
+ useEffect(()=>{if(!id){setError('Claim not selected.');setLoading(false);return}orderRequest<Claim>(`/claims/${id}`).then(setClaim).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[id]);
+ const respond=async(e:React.FormEvent)=>{e.preventDefault();if(!id)return;setBusy(true);setError('');try{setClaim(await orderRequest<Claim>(`/claims/${id}/response`,{method:'POST',body:JSON.stringify({message:reply})}));setReply('')}catch(e){setError(e instanceof Error?e.message:'Unable to send response.')}finally{setBusy(false)}};
+ return <DashboardLayout><div className="space-y-8 max-w-3xl mx-auto"><div className="text-center space-y-2"><h1 className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">Prize Claim Status</h1><p className="text-mutedBlue text-sm">Track the recorded progress of your prize claim.</p></div>
+ {loading&&<p className="text-mutedBlue text-sm">Loading claim status...</p>}{error&&<p role="alert" className="text-red-500 text-xs font-semibold">{error} {error.includes('session has expired')&&<Link href="/sign-in" className="text-secondary">Sign in again</Link>}</p>}
+ {claim&&<div className="bg-white border border-borderBlue rounded-2xl p-8 sm:p-10 shadow-card space-y-6"><div className="bg-lightBlue border border-borderBlue rounded-xl p-5 flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-accent text-primary flex items-center justify-center font-bold"><Trophy className="w-5 h-5"/></div><div><h4 className="font-bold text-primary text-base">{claim.campaign_name}</h4><p className="text-mutedBlue text-xs">Submitted {new Date(claim.submitted_at+'Z').toLocaleDateString()}</p></div></div><span className="bg-warning text-primary text-xs font-bold px-3 py-1 rounded-full">{claim.status.replaceAll('_',' ')}</span></div><div className="space-y-4 pt-4">{claim.history.map((step,i)=><div key={i} className="flex items-center justify-between p-4 bg-lightBlue/60 border border-borderBlue rounded-xl"><div className="flex items-center gap-3.5"><div className="w-8 h-8 bg-success/20 text-success rounded-full flex items-center justify-center shrink-0"><CheckCircle2 className="w-4 h-4"/></div><div><h4 className="font-bold text-primary text-sm">{step.to_status.replaceAll('_',' ')}</h4><p className="text-mutedBlue text-xs">{step.reason||new Date(step.created_at+'Z').toLocaleString()}</p></div></div><span className="text-xs font-bold text-success">Recorded</span></div>)}{claim.status!=='fulfilled'&&claim.status!=='rejected'&&<div className="flex items-center gap-3.5 p-4 bg-lightBlue/60 border border-borderBlue rounded-xl"><Clock className="w-5 h-5 text-warning"/><p className="text-mutedBlue text-xs">Next action is pending. Approval does not confirm delivery.</p></div>}</div>{claim.status==='needs_information'&&<form onSubmit={respond} className="space-y-3"><label className="block text-xs font-bold text-primary">Your response<textarea value={reply} onChange={e=>setReply(e.target.value)} minLength={8} maxLength={2000} required className="block w-full mt-1 bg-lightBlue border border-borderBlue rounded-xl p-3 text-sm"/></label><button disabled={busy} className="bg-accent hover:bg-accent-hover text-primary font-bold px-6 py-3 rounded-xl text-sm disabled:opacity-50">Send information</button></form>}<div className="pt-4 text-center"><Link href="/dashboard/draws/my-wins" className="text-secondary font-bold text-xs hover:underline">← Back to My Wins</Link></div></div>}
+ </div></DashboardLayout>;
 }
+export default function PrizeClaimStatusPage(){return <Suspense fallback={<DashboardLayout><p className="text-mutedBlue text-sm">Loading claim status...</p></DashboardLayout>}><PrizeClaimStatusContent/></Suspense>}

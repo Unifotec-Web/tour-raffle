@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     PAYSTACK_SECRET_KEY: str = ""
     FAKE_PAYMENT_SECRET: str = ""
     CHECKOUT_HOLD_MINUTES: int = 30
+    CLAIM_REQUIRE_PHONE: bool = False
+    CLAIM_REQUIRE_PREFERENCE_NOTE: bool = False
 
     @model_validator(mode="after")
     def validate_production(self):

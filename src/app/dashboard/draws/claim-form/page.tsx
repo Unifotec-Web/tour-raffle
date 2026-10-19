@@ -1,86 +1,20 @@
 'use client';
-
-import React from 'react';
+import {Suspense,useEffect,useState} from 'react';
+import {useRouter,useSearchParams} from 'next/navigation';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import Link from 'next/link';
-import { Trophy } from 'lucide-react';
-
-export default function PrizeClaimFormPage() {
-  return (
-    <DashboardLayout>
-      <div className="space-y-8 max-w-3xl mx-auto">
-
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">Prize Claim Submission</h1>
-          <p className="text-mutedBlue text-sm">Complete the form below to claim your prize.</p>
-        </div>
-
-        <div className="bg-white border border-borderBlue rounded-2xl p-8 sm:p-10 shadow-card space-y-6">
-          <div className="bg-lightBlue border border-borderBlue rounded-xl p-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-accent text-primary flex items-center justify-center font-bold">
-                <Trophy className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-primary text-base">Maldives Getaway (7 Days)</h4>
-                <p className="text-mutedBlue text-xs">Estimated Value: $5,000</p>
-              </div>
-            </div>
-            <span className="bg-success text-white text-xs font-bold px-3 py-1 rounded-full">Winner</span>
-          </div>
-
-          <form onSubmit={(e) => { e.preventDefault(); alert('Claim submitted successfully!'); }} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-primary mb-1">Full Name</label>
-                <input type="text" defaultValue="John Doe" className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-primary mb-1">Email Address</label>
-                <input type="email" defaultValue="john.doe@example.com" className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary focus:outline-none" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-primary mb-1">Phone Number</label>
-                <input type="text" defaultValue="+1 234 567 8900" className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-primary mb-1">Date of Birth</label>
-                <input type="text" defaultValue="Jan 15, 1990" className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary focus:outline-none" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-primary mb-1">Preferred Month of Travel</label>
-              <select className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary focus:outline-none">
-                <option>Select Month</option>
-                <option>November 2025</option>
-                <option>December 2025</option>
-                <option>January 2026</option>
-              </select>
-            </div>
-
-            <div className="flex items-start gap-2 pt-2">
-              <input type="checkbox" id="claim-terms" className="mt-0.5 rounded border-borderBlue text-secondary focus:ring-secondary" />
-              <label htmlFor="claim-terms" className="text-xs text-mutedBlue leading-tight">
-                I agree to the <Link href="/legal/terms" className="text-secondary font-semibold hover:underline">Terms & Conditions</Link> and Prize Claim Agreement.
-              </label>
-            </div>
-
-            <div className="pt-4 flex gap-3">
-              <button type="submit" className="flex-1 bg-accent hover:bg-accent-hover text-primary font-bold py-3.5 rounded-xl shadow-md transition-colors text-sm">
-                Submit Claim
-              </button>
-              <Link href="/dashboard" className="px-6 py-3.5 rounded-xl border border-borderBlue bg-white text-primary font-semibold text-sm hover:bg-lightBlue transition-colors">
-                Cancel
-              </Link>
-            </div>
-          </form>
-        </div>
-
-      </div>
-    </DashboardLayout>
-  );
+import {Trophy} from 'lucide-react';
+import {orderRequest} from '@/lib/orders';
+type Win={winner_id:string;campaign_name:string;claim_id:string|null};
+type Requirements={phone_required:boolean;preference_note_required:boolean;document_upload_available:boolean;claim_deadline:string|null};
+function PrizeClaimFormContent(){
+ const router=useRouter(),winnerId=useSearchParams().get('winner');const [win,setWin]=useState<Win|null>(null);const [requirements,setRequirements]=useState<Requirements|null>(null);const [phone,setPhone]=useState('');const [note,setNote]=useState('');const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [error,setError]=useState('');
+ useEffect(()=>{Promise.all([orderRequest<Win[]>('/claims/mine'),orderRequest<Requirements>('/claims/requirements')]).then(([wins,req])=>{const found=wins.find(w=>w.winner_id===winnerId);if(!found)throw new Error('Published win not found.');setWin(found);setRequirements(req)}).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[winnerId]);
+ const submit=async(e:React.FormEvent)=>{e.preventDefault();if(!win)return;setBusy(true);setError('');try{const claim=await orderRequest<{id:string}>(`/wins/${win.winner_id}/claims`,{method:'POST',body:JSON.stringify({phone:phone||null,preference_note:note||null})});router.push(`/dashboard/draws/claim-status?claim=${claim.id}`)}catch(e){setError(e instanceof Error?e.message:'Claim submission failed.')}finally{setBusy(false)}};
+ return <DashboardLayout><div className="space-y-8 max-w-3xl mx-auto"><div className="text-center space-y-2"><h1 className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">Prize Claim Submission</h1><p className="text-mutedBlue text-sm">Submit a claim for your published win.</p></div>
+ {loading&&<p className="text-mutedBlue text-sm">Loading claim form...</p>}{error&&<p role="alert" className="text-red-500 text-xs font-semibold">{error} {error.includes('session has expired')&&<Link href="/sign-in" className="text-secondary">Sign in again</Link>}</p>}
+ {win&&requirements&&<div className="bg-white border border-borderBlue rounded-2xl p-8 sm:p-10 shadow-card space-y-6"><div className="bg-lightBlue border border-borderBlue rounded-xl p-5 flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-accent text-primary flex items-center justify-center font-bold"><Trophy className="w-5 h-5"/></div><div><h4 className="font-bold text-primary text-base">{win.campaign_name}</h4><p className="text-mutedBlue text-xs">Published winning entry</p></div></div><span className="bg-success text-white text-xs font-bold px-3 py-1 rounded-full">Winner</span></div>
+ {win.claim_id?<p className="text-mutedBlue text-sm">You already submitted a claim. <Link href={`/dashboard/draws/claim-status?claim=${win.claim_id}`} className="text-secondary font-bold">View its status</Link>.</p>:<form onSubmit={submit} className="space-y-4"><p className="text-mutedBlue text-xs">Your account name and email are recorded as claim contact details. No identity document or deadline is required by the current configuration.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><label className="block text-xs font-bold text-primary">Phone Number {requirements.phone_required?'(required)':'(optional)'}<input type="tel" value={phone} onChange={e=>setPhone(e.target.value)} maxLength={40} required={requirements.phone_required} className="block w-full mt-1 bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary focus:outline-none"/></label><label className="block text-xs font-bold text-primary">Travel preference note {requirements.preference_note_required?'(required)':'(optional)'}<input type="text" value={note} onChange={e=>setNote(e.target.value)} maxLength={2000} required={requirements.preference_note_required} className="block w-full mt-1 bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary focus:outline-none"/></label></div><div className="pt-4 flex gap-3"><button type="submit" disabled={busy} className="flex-1 bg-accent hover:bg-accent-hover text-primary font-bold py-3.5 rounded-xl shadow-md transition-colors text-sm disabled:opacity-50">{busy?'Submitting...':'Submit Claim'}</button><Link href="/dashboard/draws/my-wins" className="px-6 py-3.5 rounded-xl border border-borderBlue bg-white text-primary font-semibold text-sm hover:bg-lightBlue transition-colors">Cancel</Link></div></form>}</div>}
+ </div></DashboardLayout>;
 }
+export default function PrizeClaimFormPage(){return <Suspense fallback={<DashboardLayout><p className="text-mutedBlue text-sm">Loading claim form...</p></DashboardLayout>}><PrizeClaimFormContent/></Suspense>}
