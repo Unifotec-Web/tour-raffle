@@ -23,7 +23,7 @@ class OrderError(Exception):
 
 
 def lock_campaign(db: Session, campaign_id: UUID) -> Campaign:
-    campaign = db.scalar(select(Campaign).where(Campaign.id == campaign_id).with_for_update())
+    campaign = db.scalar(select(Campaign).where(Campaign.id == campaign_id).with_for_update().execution_options(populate_existing=True))
     if campaign is None:
         raise OrderError(404, "Campaign not found")
     return campaign
@@ -114,8 +114,8 @@ def get_order_locked(db: Session, order_id: UUID) -> tuple[Campaign, Order, Chec
     if ref is None:
         raise OrderError(404, "Order not found")
     campaign = lock_campaign(db, ref.campaign_id)
-    order = db.scalar(select(Order).where(Order.id == order_id).with_for_update())
-    hold = db.scalar(select(CheckoutHold).where(CheckoutHold.order_id == order_id).with_for_update())
+    order = db.scalar(select(Order).where(Order.id == order_id).with_for_update().execution_options(populate_existing=True))
+    hold = db.scalar(select(CheckoutHold).where(CheckoutHold.order_id == order_id).with_for_update().execution_options(populate_existing=True))
     return campaign, order, hold
 
 

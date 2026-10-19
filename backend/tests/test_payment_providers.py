@@ -56,6 +56,8 @@ def test_stripe_test_signature_and_checkout_contract(monkeypatch):
     assert calls[0][1]["headers"]["Idempotency-Key"] == "tour-raffle-" + order_id
     providers.verify_fresh_stripe_session(event)
     assert calls[-1][0].endswith("/cs_test_session")
+    queried = providers.query_payment("stripe", "cs_test_session")
+    assert (queried.status, queried.order_id, queried.amount_minor, queried.currency) == ("paid", order_id, 1000, "USD")
 
 
 def test_paystack_signature_remote_verification_and_checkout_contract(monkeypatch):
@@ -88,5 +90,11 @@ def test_paystack_signature_remote_verification_and_checkout_contract(monkeypatc
     checkout = providers.create_checkout("paystack",order,"member@example.com")
     assert checkout.reference == reference
     assert calls[-1][2]["json"]["amount"] == "2000" and calls[-1][2]["json"]["currency"] == "USD"
+    class VerifyClient(Client):
+        def get(self, url, **kwargs):
+            return SimpleNamespace(status_code=200,json=lambda:{"status":True,"data":{"id":42,"domain":"test","status":"success","reference":reference,"amount":2000,"currency":"USD","metadata":{"order_id":order_id}}})
+    monkeypatch.setattr(providers.httpx, "Client", VerifyClient)
+    queried = providers.query_payment("paystack", reference)
+    assert (queried.status, queried.order_id, queried.transaction_id, queried.amount_minor) == ("paid", order_id, "42", 2000)
     monkeypatch.setattr(settings, "APP_ENV", "production")
     assert not providers.available("paystack")

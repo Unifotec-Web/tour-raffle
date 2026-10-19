@@ -148,7 +148,21 @@ class RemedyRecord(Base):
     status = Column(String(30), nullable=False, default="pending_review")
     details = Column(Text)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    reviewed_at = Column(DateTime)
+    decision = Column(String(30))
+    review_reason = Column(Text)
     __table_args__ = (UniqueConstraint("order_id", "coupon_id", "reason", name="uq_remedy_subject_reason"),)
+
+class RemedyReviewEvent(Base):
+    __tablename__ = "remedy_review_events"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    remedy_id = Column(UUID(as_uuid=True), ForeignKey("remedy_records.id"), nullable=False, index=True)
+    reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reviewer_email = Column(String(255), nullable=False)
+    decision = Column(String(30), nullable=False)
+    reason = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 class NotificationRecord(Base):
     __tablename__ = "notification_records"

@@ -30,6 +30,55 @@ class VerifiedEvent:
     successful: bool
     refund_or_dispute: bool = False
 
+@dataclass(frozen=True)
+class ProviderPayment:
+    status: str  # paid, pending, failed, or review_required
+    reference: str
+    transaction_id: str
+    amount_minor: int
+    currency: str
+    order_id: str
+
+
+def query_payment(provider: str, reference: str) -> ProviderPayment:
+    """Fetch current sandbox provider state; never infer payment from a redirect."""
+    if not available(provider) or not reference:
+        raise ProviderError("Payment provider is not configured for sandbox use")
+    if provider == "fake":
+        # Tests inject a deterministic fake provider ledger. The built-in fake has
+        # no external ledger, so it cannot prove a missing payment.
+        return ProviderPayment("pending", reference, "", 0, "", "")
+    try:
+        with httpx.Client(timeout=12) as client:
+            if provider == "stripe":
+                if not reference.startswith("cs_test_"):
+                    raise ProviderError("Stripe test checkout reference is invalid")
+                response = client.get("https://api.stripe.com/v1/checkout/sessions/" + quote(reference, safe=""), auth=(settings.STRIPE_SECRET_KEY, ""))
+            else:
+                response = client.get("https://api.paystack.co/transaction/verify/" + quote(reference, safe=""), headers={"Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"})
+    except httpx.HTTPError as error:
+        raise ProviderError("Sandbox payment provider is unavailable") from error
+    if response.status_code >= 400:
+        raise ProviderError("Sandbox payment verification unavailable")
+    try:
+        body = response.json()
+        if provider == "stripe":
+            if body.get("id") != reference or body.get("livemode") is not False:
+                raise ProviderError("Stripe sandbox session mismatch")
+            status = "paid" if body.get("payment_status") == "paid" and body.get("status") == "complete" else "failed" if body.get("status") == "expired" else "pending"
+            return ProviderPayment(status, reference, str(body.get("payment_intent") or ""), int(body.get("amount_total") or 0), str(body.get("currency") or "").upper(), str(body.get("client_reference_id") or ""))
+        data = body.get("data") or {}
+        if body.get("status") is not True or data.get("domain") != "test" or data.get("reference") != reference:
+            raise ProviderError("Paystack sandbox transaction mismatch")
+        raw_status = str(data.get("status") or "")
+        status = "paid" if raw_status == "success" else "review_required" if raw_status in ("reversed", "refunded", "disputed") else "failed" if raw_status in ("failed", "abandoned") else "pending"
+        metadata = data.get("metadata") or {}
+        if isinstance(metadata, str):
+            metadata = json.loads(metadata)
+        return ProviderPayment(status, reference, str(data.get("id") or ""), int(data.get("amount") or 0), str(data.get("currency") or "").upper(), str(metadata.get("order_id") or "") if isinstance(metadata, dict) else "")
+    except (ValueError, TypeError, AttributeError, json.JSONDecodeError) as error:
+        raise ProviderError("Invalid sandbox provider response") from error
+
 
 def available(provider: str) -> bool:
     local = settings.APP_ENV in ("development", "test")
