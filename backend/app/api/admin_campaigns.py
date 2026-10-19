@@ -11,6 +11,7 @@ from app.api.auth import check_origin
 from app.api.deps import get_current_admin
 from app.core.database import get_db
 from app.models.models import AuditLog, Campaign, DrawRun, Entry, User
+from app.services.orders import close_registration
 from app.schemas.schemas import CampaignAdminCreate, CampaignAdminResponse, CampaignAdminUpdate, CampaignStatusChange
 from app.services.redemption import TRANSITIONS, transition_campaign, utcnow
 
@@ -21,7 +22,7 @@ LOCKED_AFTER_ENTRY = {"destination", "prize_value", "currency", "coupon_price", 
 def response(campaign: Campaign, db: Session) -> CampaignAdminResponse:
     allowed = sorted(TRANSITIONS.get(campaign.status, set()) - {"completed"})
     has_entries = db.scalar(select(Entry.id).where(Entry.campaign_id == campaign.id).limit(1)) is not None
-    if has_entries and "cancelled" in allowed:
+    if (has_entries or campaign.issued_count or campaign.active_holds) and "cancelled" in allowed:
         allowed.remove("cancelled")
     now = utcnow()
     if "scheduled" in allowed and campaign.start_date <= now:
@@ -63,6 +64,8 @@ def get_campaign(campaign_id: UUID, _: User = Depends(get_current_admin), db: Se
 def create_campaign(payload: CampaignAdminCreate, request: Request, user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     check_origin(request)
     values = payload.model_dump()
+    if payload.coupon_price != 10:
+        raise HTTPException(status_code=422, detail="Coupons are fixed at $10.00 USD")
     campaign = Campaign(**values, status="draft", current_entries=0, created_at=utcnow(), updated_at=utcnow())
     try:
         if campaign.is_featured and db.scalar(select(Campaign.id).where(Campaign.is_featured.is_(True))) is not None:
@@ -98,8 +101,10 @@ def edit_campaign(campaign_id: UUID, payload: CampaignAdminUpdate, request: Requ
             raise HTTPException(status_code=422, detail="No changes supplied")
         if db.scalar(select(DrawRun.id).where(DrawRun.campaign_id == campaign_id)) is not None and actual.keys() & (LOCKED_AFTER_ENTRY | {"max_capacity"}):
             raise HTTPException(status_code=409, detail="Draw rules are frozen after snapshot preparation")
-        if entry_count and LOCKED_AFTER_ENTRY.intersection(actual):
-            raise HTTPException(status_code=409, detail="Prize, destination, price, winners and dates are locked after entries exist")
+        if (entry_count or campaign.issued_count or campaign.unused_reservations or campaign.active_holds) and LOCKED_AFTER_ENTRY.intersection(actual):
+            raise HTTPException(status_code=409, detail="Prize, destination, price, winners and dates are locked after entries or checkout commitments exist")
+        if changes.get("coupon_price", 10) != 10:
+            raise HTTPException(status_code=422, detail="Coupons are fixed at $10.00 USD")
         capacity = changes.get("max_capacity", campaign.max_capacity)
         winners = changes.get("winner_count", campaign.winner_count)
         start = changes.get("start_date", campaign.start_date)
@@ -108,8 +113,8 @@ def edit_campaign(campaign_id: UUID, payload: CampaignAdminUpdate, request: Requ
             raise HTTPException(status_code=422, detail="Winner count cannot exceed capacity")
         if start >= end:
             raise HTTPException(status_code=422, detail="End date must be after start date")
-        if capacity < max(confirmed, campaign.current_entries):
-            raise HTTPException(status_code=409, detail="Capacity cannot be below confirmed entries")
+        if capacity < max(confirmed, campaign.current_entries + campaign.unused_reservations + campaign.active_holds, campaign.issued_count):
+            raise HTTPException(status_code=409, detail="Capacity cannot be below confirmed entries, reservations, holds, or issued codes")
         if changes.get("is_featured") and not campaign.is_featured and db.scalar(select(Campaign.id).where(Campaign.is_featured.is_(True))) is not None:
             raise HTTPException(status_code=409, detail="Another campaign is already featured")
         for key, value in changes.items():
@@ -117,7 +122,7 @@ def edit_campaign(campaign_id: UUID, payload: CampaignAdminUpdate, request: Requ
         campaign.updated_at = utcnow()
         audit(db, user, request, "campaign.edit", campaign, actual)
         if campaign.status == "open" and campaign.current_entries == campaign.max_capacity:
-            transition_campaign(campaign, "closed")
+            close_registration(db, campaign, "registered entry limit after edit")
             audit(db, user, request, "campaign.status", campaign, {"from": "open", "to": "closed", "reason": "capacity reached by edit"})
         db.commit()
         return response(campaign, db)
@@ -136,13 +141,16 @@ def change_status(campaign_id: UUID, payload: CampaignStatusChange, request: Req
         campaign = get_locked_campaign(db, campaign_id)
         if payload.status == "completed":
             raise HTTPException(status_code=409, detail="Completion requires the draw workflow")
-        if payload.status == "cancelled" and db.scalar(select(Entry.id).where(Entry.campaign_id == campaign_id).limit(1)) is not None:
-            raise HTTPException(status_code=409, detail="Cannot cancel a campaign with entries")
+        if payload.status == "cancelled" and (db.scalar(select(Entry.id).where(Entry.campaign_id == campaign_id).limit(1)) is not None or campaign.issued_count or campaign.active_holds):
+            raise HTTPException(status_code=409, detail="Cannot cancel a campaign with entries, issued coupons, or checkout holds")
         if payload.status == "scheduled" and campaign.start_date <= utcnow():
             raise HTTPException(status_code=409, detail="Scheduled campaigns must start in the future")
         old_status = campaign.status
         try:
-            transition_campaign(campaign, payload.status)
+            if payload.status == "closed" and campaign.status == "open":
+                close_registration(db, campaign, "admin closure")
+            else:
+                transition_campaign(campaign, payload.status)
         except ValueError as error:
             raise HTTPException(status_code=409, detail=str(error)) from error
         audit(db, user, request, "campaign.status", campaign, {"from": old_status, "to": campaign.status})

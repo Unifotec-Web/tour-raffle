@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.models.models import AuditLog, Campaign, Coupon, DrawRun, DrawSnapshot, DrawWinner, Entry, User
 from app.services.draw import ALGORITHM_VERSION, canonical, digest, select_winners
 from app.services.redemption import utcnow
+from app.services.orders import enforce_deadline
 
 admin_router = APIRouter(prefix="/admin/draws", tags=["admin draws"])
 public_router = APIRouter(prefix="/draws", tags=["draws"])
@@ -70,13 +71,18 @@ def prepare(campaign_id: UUID, request: Request, user: User = Depends(get_curren
         campaign = db.scalar(select(Campaign).where(Campaign.id == campaign_id).with_for_update())
         if campaign is None:
             raise HTTPException(404, "Campaign not found")
+        was_open = campaign.status == "open"
+        enforce_deadline(db, campaign)
+        if was_open and campaign.status == "closed":
+            db.commit()  # Closure must persist even when draw prerequisites fail.
+            campaign = db.scalar(select(Campaign).where(Campaign.id == campaign_id).with_for_update())
         existing = db.scalar(select(DrawRun).where(DrawRun.campaign_id == campaign_id))
         if existing:
             return detail(db, existing)
         if campaign.status != "closed":
             raise HTTPException(409, "Registration must be closed before preparing a draw")
         rows = db.execute(select(Entry.id, Entry.user_id, Entry.coupon_id, Entry.status, Coupon.status, Coupon.user_id, Coupon.campaign_id, User.is_active).join(Coupon, Coupon.id == Entry.coupon_id).join(User, User.id == Entry.user_id).where(Entry.campaign_id == campaign_id).order_by(Entry.id)).all()
-        if len(rows) != campaign.current_entries or any(r[3] != "confirmed" or r[4] != "redeemed" or r[1] != r[5] or r[6] != campaign_id or not r[7] for r in rows):
+        if len(rows) != campaign.current_entries or any(r[3] != "confirmed" or r[4] not in ("redeemed", "registered") or r[1] != r[5] or r[6] != campaign_id or not r[7] for r in rows):
             raise HTTPException(409, "Entry/coupon reconciliation or participant eligibility is unresolved")
         participants = len({r[1] for r in rows})
         if participants < campaign.winner_count:
@@ -86,7 +92,7 @@ def prepare(campaign_id: UUID, request: Request, user: User = Depends(get_curren
                       "start_date": campaign.start_date.isoformat(), "end_date": campaign.end_date.isoformat(),
                       "destination": campaign.destination, "prize_value": str(campaign.prize_value),
                       "currency": campaign.currency, "coupon_price": str(campaign.coupon_price),
-                      "eligibility": "active user; confirmed entry; redeemed owned coupon",
+                      "eligibility": "active user; confirmed entry; registered or legacy redeemed owned coupon",
                       "winner_policy": "one per participant; entry weighted", "algorithm_version": ALGORITHM_VERSION},
             "entries": [{"entry_id": str(r[0]), "user_id": str(r[1]), "coupon_id": str(r[2])} for r in rows]})
         run = DrawRun(campaign_id=campaign_id, status="prepared", seed=None, seed_hash=None, algorithm_version=ALGORITHM_VERSION, prepared_by=user.id, prepared_at=utcnow())

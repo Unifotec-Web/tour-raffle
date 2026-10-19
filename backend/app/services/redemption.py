@@ -61,26 +61,36 @@ def redeem(db: Session, code: str, owner_id: UUID) -> tuple[Entry, bool]:
             db.commit()
             return existing, False
         now = utcnow()
-        if coupon.status != "active":
+        if campaign.status == "open" and now >= campaign.end_date:
+            from app.services.orders import close_registration
+            close_registration(db, campaign, "deadline", now)
+            db.commit()
+            raise RedemptionError(409, "Registration is closed")
+        if coupon.status not in ("active", "unused"):
             raise RedemptionError(409, "Coupon is not available")
         if coupon.valid_until <= now:
             raise RedemptionError(409, "Coupon has expired")
         if campaign.current_entries >= campaign.max_capacity:
             raise RedemptionError(409, "Campaign is full")
+        if coupon.status == "active" and campaign.current_entries + campaign.unused_reservations + campaign.active_holds >= campaign.max_capacity:
+            raise RedemptionError(409, "Campaign capacity is reserved")
         if campaign.status != "open" or not (campaign.start_date <= now < campaign.end_date):
             raise RedemptionError(409, "Registration is closed")
         entry = Entry(
             entry_code=generate_entry_code(), coupon_id=coupon.id,
             campaign_id=campaign.id, user_id=owner_id, status="confirmed", entry_date=now,
         )
-        coupon.status = "redeemed"
+        purchased = coupon.status == "unused"
+        coupon.status = "registered" if purchased else "redeemed"
+        if purchased:
+            campaign.unused_reservations -= 1
         campaign.current_entries += 1
         campaign.updated_at = now
-        if campaign.current_entries == campaign.max_capacity:
-            transition_campaign(campaign, "closed", now)
-            db.add(AuditLog(admin_email="system", action="campaign.status", details=json.dumps({"campaign_id": str(campaign.id), "changes": {"from": "open", "to": "closed", "reason": "capacity reached by redemption"}}), ip_address="system", created_at=now))
         db.add(entry)
-        db.flush()
+        db.flush()  # Closure queries must see this coupon's registered state with autoflush disabled.
+        if campaign.current_entries == campaign.max_capacity:
+            from app.services.orders import close_registration
+            close_registration(db, campaign, "registered entry limit", now)
         db.commit()
         return entry, True
     except Exception:

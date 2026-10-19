@@ -145,6 +145,10 @@ class CampaignProgress(BaseModel):
     max_capacity: int
     current_entries: int
     remaining: int
+    available_checkout_slots: int
+    unused_reservations: int
+    active_holds: int
+    issued_count: int
     percentage: float
     updated_at: datetime
 
@@ -157,6 +161,7 @@ class CouponResponse(BaseModel):
     status: str
     purchase_date: datetime
     valid_until: datetime
+    remedy_status: Optional[str] = None
 
 class EntryResponse(BaseModel):
     id: UUID

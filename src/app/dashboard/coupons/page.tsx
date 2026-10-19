@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Ticket, ShieldCheck, RefreshCw, XCircle, Search } from 'lucide-react';
 
 export default function MyCouponsPage() {
-  type Coupon = { id: string; code: string; campaign_name: string; status: string; purchase_date: string; valid_until: string };
+  type Coupon = { id: string; code: string; campaign_name: string; status: string; purchase_date: string; valid_until: string; remedy_status?: string | null };
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -17,8 +17,8 @@ export default function MyCouponsPage() {
       .then(async response => { if (response.status === 401) throw new Error('Your session has expired. Please sign in again.'); if (!response.ok) throw new Error('Unable to load coupons.'); return response.json(); })
       .then(setCoupons).catch(failure => setError(failure.message)).finally(() => setLoading(false));
   }, []);
-  const effectiveStatus = (c: Coupon) => c.status === 'active' && new Date(c.valid_until) <= new Date() ? 'expired' : c.status;
-  const counts = { active: coupons.filter(c => effectiveStatus(c) === 'active').length, redeemed: coupons.filter(c => effectiveStatus(c) === 'redeemed').length, expired: coupons.filter(c => effectiveStatus(c) === 'expired').length };
+  const effectiveStatus = (c: Coupon) => { const status = c.status === 'active' ? 'unused' : c.status === 'redeemed' ? 'registered' : c.status; return status === 'unused' && new Date(c.valid_until) <= new Date() ? 'expired' : status; };
+  const counts = { unused: coupons.filter(c => effectiveStatus(c) === 'unused').length, registered: coupons.filter(c => effectiveStatus(c) === 'registered').length, expired: coupons.filter(c => effectiveStatus(c) === 'expired').length, refunded: coupons.filter(c => effectiveStatus(c) === 'refunded').length };
   const visible = useMemo(() => coupons.filter(c => (filter === 'all' || effectiveStatus(c) === filter) && c.code.toLowerCase().includes(search.toLowerCase())), [coupons, filter, search]);
 
   return (
@@ -53,8 +53,8 @@ export default function MyCouponsPage() {
 
           <div className="bg-white border border-borderBlue rounded-2xl p-5 shadow-sm flex items-center justify-between">
             <div>
-              <span className="text-mutedBlue text-xs block mb-1">Active Coupons</span>
-              <span className="text-2xl font-extrabold text-success">{loading || error ? '—' : counts.active}</span>
+              <span className="text-mutedBlue text-xs block mb-1">Unused Coupons</span>
+              <span className="text-2xl font-extrabold text-success">{loading || error ? '—' : counts.unused}</span>
             </div>
             <div className="w-10 h-10 rounded-full bg-success/10 border border-success/30 flex items-center justify-center text-success">
               <ShieldCheck className="w-5 h-5" />
@@ -63,8 +63,8 @@ export default function MyCouponsPage() {
 
           <div className="bg-white border border-borderBlue rounded-2xl p-5 shadow-sm flex items-center justify-between">
             <div>
-              <span className="text-mutedBlue text-xs block mb-1">Redeemed Coupons</span>
-              <span className="text-2xl font-extrabold text-secondary">{loading || error ? '—' : counts.redeemed}</span>
+              <span className="text-mutedBlue text-xs block mb-1">Registered Coupons</span>
+              <span className="text-2xl font-extrabold text-secondary">{loading || error ? '—' : counts.registered}</span>
             </div>
             <div className="w-10 h-10 rounded-full bg-secondary/10 border border-secondary/30 flex items-center justify-center text-secondary">
               <RefreshCw className="w-5 h-5" />
@@ -87,7 +87,7 @@ export default function MyCouponsPage() {
           {error && <p role="alert" className="text-red-500 text-xs font-semibold">{error} {error.includes('session has expired') && <Link href="/sign-in" className="text-secondary hover:underline">Sign in again</Link>}</p>}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              {(['all', 'active', 'redeemed', 'expired'] as const).map(status => <button key={status} onClick={() => setFilter(status)} className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${filter === status ? 'bg-primary text-white font-bold shadow-sm' : 'bg-lightBlue text-primary hover:bg-borderBlue'}`}>{status[0].toUpperCase() + status.slice(1)} ({loading || error ? '—' : status === 'all' ? coupons.length : counts[status]})</button>)}
+              {(['all', 'unused', 'registered', 'expired', 'refunded'] as const).map(status => <button key={status} onClick={() => setFilter(status)} className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${filter === status ? 'bg-primary text-white font-bold shadow-sm' : 'bg-lightBlue text-primary hover:bg-borderBlue'}`}>{status[0].toUpperCase() + status.slice(1)} ({loading || error ? '—' : status === 'all' ? coupons.length : counts[status]})</button>)}
             </div>
             <div className="relative">
               <input
@@ -122,11 +122,11 @@ export default function MyCouponsPage() {
                     <td className="py-3.5 px-4 text-mutedBlue">{new Date(c.purchase_date).toLocaleString()}</td>
                     <td className="py-3.5 px-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        effectiveStatus(c) === 'active' ? 'bg-success/15 text-success border border-success/30' :
-                        effectiveStatus(c) === 'redeemed' ? 'bg-secondary/15 text-secondary border border-secondary/30' :
+                        effectiveStatus(c) === 'unused' ? 'bg-success/15 text-success border border-success/30' :
+                        effectiveStatus(c) === 'registered' ? 'bg-secondary/15 text-secondary border border-secondary/30' :
                         'bg-red-500/15 text-red-500 border border-red-500/30'
                       }`}>
-                        {effectiveStatus(c)[0].toUpperCase() + effectiveStatus(c).slice(1)}
+                        {effectiveStatus(c)[0].toUpperCase() + effectiveStatus(c).slice(1)}{c.remedy_status === 'pending_review' ? ' · Review pending' : ''}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-mutedBlue">{new Date(c.valid_until).toLocaleDateString()}</td>
@@ -135,7 +135,7 @@ export default function MyCouponsPage() {
                         href={`/dashboard/entries/register?code=${encodeURIComponent(c.code)}`}
                         className="inline-block px-3 py-1.5 rounded-lg border border-borderBlue bg-lightBlue text-primary text-[11px] font-semibold hover:bg-white transition-colors shadow-sm"
                       >
-                        {effectiveStatus(c) === 'active' ? 'Register Entry' : 'View Details'}
+                        {effectiveStatus(c) === 'unused' ? 'Register Entry' : 'View Details'}
                       </Link>
                     </td>
                   </tr>

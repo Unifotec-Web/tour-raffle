@@ -47,6 +47,9 @@ class Campaign(Base):
     coupon_price = Column(Numeric(10, 2), default=10.00)
     max_capacity = Column(Integer, default=450000, nullable=False)
     current_entries = Column(Integer, default=0, nullable=False)
+    unused_reservations = Column(Integer, default=0, nullable=False)
+    active_holds = Column(Integer, default=0, nullable=False)
+    issued_count = Column(Integer, default=0, nullable=False)
     winner_count = Column(Integer, default=1, nullable=False)
     is_featured = Column(Boolean, default=False, nullable=False)
     status = Column(String(50), default="draft", nullable=False)
@@ -57,6 +60,8 @@ class Campaign(Base):
     __table_args__ = (
         CheckConstraint("max_capacity > 0", name="campaign_capacity_positive"),
         CheckConstraint("current_entries >= 0 AND current_entries <= max_capacity", name="campaign_entries_within_capacity"),
+        CheckConstraint("unused_reservations >= 0 AND active_holds >= 0 AND current_entries + unused_reservations + active_holds <= max_capacity", name="campaign_reserved_within_capacity"),
+        CheckConstraint("issued_count >= 0 AND issued_count <= max_capacity", name="campaign_issuance_within_capacity"),
         CheckConstraint("winner_count > 0 AND winner_count <= max_capacity", name="campaign_winners_within_capacity"),
         CheckConstraint("start_date < end_date", name="campaign_dates_ordered"),
         CheckConstraint("status IN ('draft', 'scheduled', 'open', 'closed', 'completed', 'cancelled')", name="campaign_status_valid"),
@@ -73,7 +78,9 @@ class Coupon(Base):
     status = Column(String(50), default="active", nullable=False)
     purchase_date = Column(DateTime, default=datetime.utcnow)
     valid_until = Column(DateTime, nullable=False)
-    __table_args__ = (CheckConstraint("status IN ('active', 'redeemed', 'expired')", name="coupon_status_valid"),)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True)
+    order_position = Column(Integer)
+    __table_args__ = (CheckConstraint("status IN ('active', 'redeemed', 'unused', 'registered', 'expired', 'refunded')", name="coupon_status_valid"), UniqueConstraint("order_id", "order_position", name="uq_coupon_order_position"))
 
 class Entry(Base):
     __tablename__ = "entries"
@@ -94,8 +101,64 @@ class Order(Base):
     campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     total_amount = Column(Numeric(10, 2), nullable=False)
-    status = Column(String(50), default="pending") # pending, completed, failed
+    unit_amount = Column(Numeric(10, 2), nullable=False, default=10)
+    currency = Column(String(3), nullable=False, default="USD")
+    paid_amount = Column(Numeric(10, 2))
+    paid_currency = Column(String(3))
+    fx_snapshot = Column(Text)
+    idempotency_key = Column(String(128), nullable=False)
+    provider = Column(String(20), nullable=False)
+    provider_reference = Column(String(255), unique=True)
+    provider_transaction_id = Column(String(255), unique=True)
+    checkout_url = Column(Text)
+    status = Column(String(50), default="held", nullable=False)
+    paid_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("user_id", "idempotency_key", name="uq_order_user_idempotency"), CheckConstraint("quantity > 0 AND quantity <= 100", name="order_quantity_valid"), CheckConstraint("status IN ('held', 'checkout_pending', 'paid_pending_issuance', 'issued', 'failed', 'cancelled', 'reconciliation_required')", name="order_status_valid"))
+
+class CheckoutHold(Base):
+    __tablename__ = "checkout_holds"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, unique=True)
+    campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id"), nullable=False, index=True)
+    quantity = Column(Integer, nullable=False)
+    status = Column(String(20), nullable=False, default="active")
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (CheckConstraint("status IN ('active', 'converted', 'expired', 'cancelled')", name="hold_status_valid"),)
+
+class ProviderEvent(Base):
+    __tablename__ = "provider_events"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    provider = Column(String(20), nullable=False)
+    event_id = Column(String(255), nullable=False)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
+    event_type = Column(String(100), nullable=False)
+    transaction_id = Column(String(255))
+    payload_hash = Column(String(64), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("provider", "event_id", name="uq_provider_event"), UniqueConstraint("provider", "transaction_id", name="uq_provider_transaction"))
+
+class RemedyRecord(Base):
+    __tablename__ = "remedy_records"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"))
+    coupon_id = Column(UUID(as_uuid=True), ForeignKey("coupons.id"))
+    reason = Column(String(80), nullable=False)
+    status = Column(String(30), nullable=False, default="pending_review")
+    details = Column(Text)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("order_id", "coupon_id", "reason", name="uq_remedy_subject_reason"),)
+
+class NotificationRecord(Base):
+    __tablename__ = "notification_records"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    coupon_id = Column(UUID(as_uuid=True), ForeignKey("coupons.id"), nullable=False)
+    kind = Column(String(40), nullable=False)
+    channel = Column(String(20), nullable=False, default="local_sink")
+    status = Column(String(20), nullable=False, default="recorded")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("coupon_id", "kind", name="uq_coupon_notification"),)
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

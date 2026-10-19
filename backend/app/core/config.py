@@ -10,11 +10,23 @@ class Settings(BaseSettings):
     SESSION_HOURS: int = 8
     FRONTEND_URL: str = "http://localhost:3000"
     ENABLE_LOCAL_DRAW: bool = False
+    ENABLE_FAKE_PAYMENTS: bool = False
+    ENABLE_STRIPE_SANDBOX: bool = False
+    ENABLE_PAYSTACK_SANDBOX: bool = False
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    PAYSTACK_SECRET_KEY: str = ""
+    FAKE_PAYMENT_SECRET: str = ""
+    CHECKOUT_HOLD_MINUTES: int = 30
 
     @model_validator(mode="after")
     def validate_production(self):
         if self.APP_ENV == "production" and (not self.SESSION_COOKIE_SECURE or not self.FRONTEND_URL.startswith("https://")):
             raise ValueError("Production requires secure cookies and an HTTPS frontend URL")
+        if self.APP_ENV == "production" and (self.ENABLE_FAKE_PAYMENTS or self.ENABLE_STRIPE_SANDBOX or self.ENABLE_PAYSTACK_SANDBOX):
+            raise ValueError("Production payment execution is disabled")
+        if self.CHECKOUT_HOLD_MINUTES < 1 or self.CHECKOUT_HOLD_MINUTES > 60:
+            raise ValueError("Checkout hold must be 1 to 60 minutes")
         return self
 
     class Config:

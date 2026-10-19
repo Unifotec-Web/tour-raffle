@@ -25,13 +25,19 @@ if not 1 <= args.count <= 10:
     parser.error("Count must be between 1 and 10")
 with SessionLocal() as db:
     owner = db.scalar(select(User).where(User.email == args.owner_email.lower()))
-    campaign = db.get(Campaign, args.campaign_id)
+    campaign = db.scalar(select(Campaign).where(Campaign.id == args.campaign_id).with_for_update())
     if owner is None or campaign is None:
         parser.error("Owner and campaign must exist")
+    now = utcnow()
+    if campaign.status != "open" or not (campaign.start_date <= now < campaign.end_date):
+        parser.error("Fixture coupons require open registration")
+    if campaign.issued_count + campaign.active_holds + args.count > campaign.max_capacity:
+        parser.error("Cumulative coupon issuance limit reached")
+    campaign.issued_count += args.count
     codes = []
     for _ in range(args.count):
         code = generate_secure_coupon_code()
-        db.add(Coupon(code=code, campaign_id=campaign.id, user_id=owner.id, status="active", valid_until=utcnow()+timedelta(days=1)))
+        db.add(Coupon(code=code, campaign_id=campaign.id, user_id=owner.id, status="active", valid_until=campaign.end_date))
         codes.append(code)
     db.commit()
 print("\n".join(codes))

@@ -334,6 +334,9 @@ def test_reconciliation_and_open_campaign_rejected(database):
     admin_data, _ = users(database)
     admin = client(admin_data[2])
     open_id = fixture_campaign(database, owner_count=1, winner_count=1, status='open')
+    with database() as db:
+        db.get(Campaign, open_id).end_date = utcnow() + timedelta(days=1)
+        db.commit()
     assert admin.post(f'/api/v1/admin/draws/{open_id}/prepare', headers=ORIGIN).status_code == 409
     with database() as db:
         db.get(Campaign, open_id).status = 'closed'
