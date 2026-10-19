@@ -1,66 +1,13 @@
-import React from 'react';
+'use client';
+import { useCallback, useEffect, useState } from 'react';
 import { Database, CheckCircle, Clock, RotateCw, BarChart2 } from 'lucide-react';
-
+import { publicCampaigns, PublicCampaign } from '@/lib/public-campaigns';
 export default function CampaignInformation() {
-  return (
-    <div className="bg-white border border-borderBlue rounded-2xl p-6 shadow-card h-full flex flex-col justify-between">
-      <div>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-extrabold text-primary tracking-tight">Campaign Information</h3>
-          <span className="bg-success/10 text-success text-xs font-bold px-3 py-1 rounded-full border border-success/30 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-success"></span>
-            Open
-          </span>
-        </div>
-
-        {/* Info Rows */}
-        <div className="space-y-4 mb-6">
-          <div className="flex items-center justify-between py-2 border-b border-borderBlue">
-            <span className="text-mutedBlue text-sm flex items-center gap-2">
-              <Database className="w-4 h-4 text-secondary" /> Total Capacity
-            </span>
-            <span className="text-primary font-bold text-sm">450,000</span>
-          </div>
-
-          <div className="flex items-center justify-between py-2 border-b border-borderBlue">
-            <span className="text-mutedBlue text-sm flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-secondary" /> Valid Entries
-            </span>
-            <span className="text-primary font-bold text-sm">125,432</span>
-          </div>
-
-          <div className="flex items-center justify-between py-2 border-b border-borderBlue">
-            <span className="text-mutedBlue text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-secondary" /> Remaining Entries
-            </span>
-            <span className="text-primary font-bold text-sm">324,568</span>
-          </div>
-
-          <div className="py-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-mutedBlue text-sm flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-secondary" /> Progress
-              </span>
-              <span className="text-primary font-bold text-sm">27.9%</span>
-            </div>
-            <div className="h-3 bg-lightBlue rounded-pill overflow-hidden p-0.5 border border-borderBlue">
-              <div
-                className="h-full bg-gradient-to-r from-accent to-[#FFB92E] rounded-pill"
-                style={{ width: '27.9%' }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Timestamp */}
-      <div className="pt-4 border-t border-borderBlue flex items-center justify-between text-xs text-mutedBlue">
-        <span>Last updated: Oct 12, 2025 10:34 AM</span>
-        <button aria-label="Refresh campaign information" className="p-1 rounded-full hover:bg-lightBlue text-secondary transition-colors">
-          <RotateCw className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </div>
-  );
+  const [campaign,setCampaign]=useState<PublicCampaign|null>(null);const [error,setError]=useState('');const [loading,setLoading]=useState(true);
+  const refresh=useCallback(()=>{setLoading(true);publicCampaigns().then(rows=>{setCampaign(rows.find(c=>c.is_featured)??rows[0]??null);setError('')}).catch(e=>setError(e.message)).finally(()=>setLoading(false))},[]);
+  useEffect(()=>{refresh()},[refresh]);
+  return <div className="bg-white border border-borderBlue rounded-2xl p-6 shadow-card h-full flex flex-col justify-between"><div><div className="flex items-center justify-between mb-6"><h3 className="text-xl font-extrabold text-primary tracking-tight">Campaign Information</h3>{campaign&&<span className="bg-success/10 text-success text-xs font-bold px-3 py-1 rounded-full border border-success/30">{campaign.status}</span>}</div>
+    {loading&&<p role="status" className="text-mutedBlue text-sm">Loading campaign...</p>}{error&&<p role="alert" className="text-red-500 text-sm">{error}</p>}{!loading&&!error&&!campaign&&<p className="text-mutedBlue text-sm">No campaign is available yet.</p>}
+    {campaign&&<div className="space-y-4 mb-6"><div className="flex justify-between py-2 border-b border-borderBlue text-sm"><span className="text-mutedBlue flex items-center gap-2"><Database className="w-4 h-4 text-secondary"/>Total Capacity</span><strong className="text-primary">{campaign.max_capacity.toLocaleString()}</strong></div><div className="flex justify-between py-2 border-b border-borderBlue text-sm"><span className="text-mutedBlue flex items-center gap-2"><CheckCircle className="w-4 h-4 text-secondary"/>Valid Entries</span><strong className="text-primary">{campaign.current_entries.toLocaleString()}</strong></div><div className="flex justify-between py-2 border-b border-borderBlue text-sm"><span className="text-mutedBlue flex items-center gap-2"><Clock className="w-4 h-4 text-secondary"/>Registration Slots</span><strong className="text-primary">{campaign.remaining_registration_slots.toLocaleString()}</strong></div><div className="py-2"><div className="flex justify-between mb-2 text-sm"><span className="text-mutedBlue flex items-center gap-2"><BarChart2 className="w-4 h-4 text-secondary"/>Progress</span><strong className="text-primary">{(100*campaign.current_entries/campaign.max_capacity).toFixed(1)}%</strong></div><div className="h-3 bg-lightBlue rounded-pill overflow-hidden p-0.5 border border-borderBlue"><div className="h-full bg-accent rounded-pill" style={{width:`${100*campaign.current_entries/campaign.max_capacity}%`}}/></div></div></div>}
+    </div><div className="pt-4 border-t border-borderBlue flex items-center justify-between text-xs text-mutedBlue"><span>Campaign data from the server</span><button aria-label="Refresh campaign information" onClick={refresh} className="p-1 rounded-full hover:bg-lightBlue text-secondary"><RotateCw className="w-3.5 h-3.5"/></button></div></div>;
 }

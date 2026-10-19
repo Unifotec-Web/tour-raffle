@@ -45,7 +45,7 @@ export default function FAQSection() {
             </p>
           </div>
           <Link
-            href="#all-faqs"
+            href="/faqs"
             className="bg-white hover:bg-lightBlue text-primary font-bold text-sm px-5 py-2.5 rounded-pill border border-borderBlue transition-colors shadow-sm self-start sm:self-auto"
           >
             View All FAQs →

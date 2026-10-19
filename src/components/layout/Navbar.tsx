@@ -65,7 +65,7 @@ export default function Navbar() {
             Sign In
           </Link>
           <Link
-            href="/raffles/maldives"
+            href="/current-raffle"
             className="bg-accent hover:bg-accent-hover text-primary text-sm font-bold px-5 py-2.5 rounded-pill shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95"
           >
             Enter Raffle
@@ -109,7 +109,7 @@ export default function Navbar() {
               Sign In
             </Link>
             <Link
-              href="/raffles/maldives"
+              href="/current-raffle"
               onClick={() => setMobileMenuOpen(false)}
               className="text-center py-2.5 rounded-pill bg-accent text-primary font-bold shadow-md"
             >

@@ -30,7 +30,7 @@ export default function FinalCTA() {
 
             <div className="pt-2">
               <Link
-                href="#enter-raffle"
+                href="/current-raffle"
                 className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-primary font-bold px-8 py-4 rounded-pill shadow-lg transition-all transform hover:scale-105 text-base"
               >
                 Enter Raffle

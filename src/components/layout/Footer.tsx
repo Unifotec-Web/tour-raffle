@@ -30,11 +30,11 @@ export default function Footer() {
           <h4 className="text-white font-bold text-base mb-4 tracking-tight">Quick Links</h4>
           <ul className="space-y-2.5 text-sm text-mutedBlue">
             <li><Link href="/" className="hover:text-accent transition-colors">Home</Link></li>
-            <li><Link href="#how-it-works" className="hover:text-accent transition-colors">How It Works</Link></li>
-            <li><Link href="#current-raffle" className="hover:text-accent transition-colors">Current Raffle</Link></li>
-            <li><Link href="#check-entry" className="hover:text-accent transition-colors">Check Entry</Link></li>
-            <li><Link href="#winners" className="hover:text-accent transition-colors">Winners</Link></li>
-            <li><Link href="#faqs" className="hover:text-accent transition-colors">FAQs</Link></li>
+            <li><Link href="/how-it-works" className="hover:text-accent transition-colors">How It Works</Link></li>
+            <li><Link href="/current-raffle" className="hover:text-accent transition-colors">Current Raffle</Link></li>
+            <li><Link href="/check-entry" className="hover:text-accent transition-colors">Check Entry</Link></li>
+            <li><Link href="/winners" className="hover:text-accent transition-colors">Winners</Link></li>
+            <li><Link href="/faqs" className="hover:text-accent transition-colors">FAQs</Link></li>
           </ul>
         </div>
 
@@ -42,11 +42,11 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-bold text-base mb-4 tracking-tight">Support</h4>
           <ul className="space-y-2.5 text-sm text-mutedBlue">
-            <li><Link href="#contact" className="hover:text-accent transition-colors">Contact Us</Link></li>
-            <li><Link href="#help" className="hover:text-accent transition-colors">Help Center</Link></li>
-            <li><Link href="#terms" className="hover:text-accent transition-colors">Terms & Conditions</Link></li>
-            <li><Link href="#privacy" className="hover:text-accent transition-colors">Privacy Policy</Link></li>
-            <li><Link href="#responsible" className="hover:text-accent transition-colors">Responsible Participation</Link></li>
+            <li><Link href="/support/contact" className="hover:text-accent transition-colors">Contact Us</Link></li>
+            <li><Link href="/support" className="hover:text-accent transition-colors">Help Center</Link></li>
+            <li><Link href="/legal/terms" className="hover:text-accent transition-colors">Terms & Conditions</Link></li>
+            <li><Link href="/legal/privacy" className="hover:text-accent transition-colors">Privacy Policy</Link></li>
+            <li><Link href="/legal/responsible" className="hover:text-accent transition-colors">Responsible Participation</Link></li>
           </ul>
         </div>
 
@@ -95,11 +95,11 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-mutedBlue gap-4">
         <p>© 2025 Tour Raffle. All rights reserved.</p>
         <div className="flex items-center gap-6">
-          <Link href="#terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
+          <Link href="/legal/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
           <span>|</span>
-          <Link href="#privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+          <Link href="/legal/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
           <span>|</span>
-          <Link href="#support" className="hover:text-white transition-colors">Support</Link>
+          <Link href="/support" className="hover:text-white transition-colors">Support</Link>
         </div>
       </div>
     </footer>

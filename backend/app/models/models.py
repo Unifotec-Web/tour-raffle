@@ -35,6 +35,15 @@ class AuthAttempt(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     __table_args__ = (Index("ix_auth_attempts_email_created", "email", "created_at"), Index("ix_auth_attempts_ip_created", "ip_address", "created_at"))
 
+class LookupBucket(Base):
+    __tablename__ = "lookup_buckets"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    scope = Column(String(30), nullable=False)
+    window_start = Column(DateTime, nullable=False)
+    attempts = Column(Integer, nullable=False, default=0)
+    __table_args__ = (UniqueConstraint("user_id", "scope", "window_start", name="uq_lookup_bucket"), CheckConstraint("attempts > 0", name="lookup_attempts_positive"))
+
 class Campaign(Base):
     __tablename__ = "campaigns"
 

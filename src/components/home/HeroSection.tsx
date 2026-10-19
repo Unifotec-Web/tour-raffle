@@ -30,13 +30,13 @@ export default function HeroSection() {
 
           {/* Description */}
           <p className="text-white/90 text-base sm:text-lg leading-relaxed mb-8 max-w-xl font-normal">
-            Discover Tour Raffle, register your unique entry code, and take part in a transparent prize draw. Every valid entry counts toward the campaign&apos;s 450,000-entry limit.
+            Discover Tour Raffle, register your unique entry code, and follow published campaign progress. Each campaign has its own entry limit.
           </p>
 
           {/* Buttons */}
           <div className="flex flex-wrap items-center gap-4">
             <Link
-              href="#enter-raffle"
+              href="/current-raffle"
               className="bg-accent hover:bg-accent-hover text-primary font-bold px-7 py-3.5 rounded-pill shadow-lg flex items-center gap-2 transition-all transform hover:scale-105"
             >
               Enter Raffle

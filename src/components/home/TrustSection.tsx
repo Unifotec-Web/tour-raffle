@@ -16,12 +16,12 @@ export default function TrustSection() {
     {
       icon: <ExternalLink className="w-6 h-6 text-secondary" />,
       title: 'Transparent Progress',
-      description: 'Live, verified campaign data.'
+      description: 'Campaign progress from the server.'
     },
     {
       icon: <Link2 className="w-6 h-6 text-secondary" />,
       title: 'Secure Draw Process',
-      description: 'Fair and independently verified.'
+      description: 'Draw records available after publication.'
     },
     {
       icon: <Calendar className="w-6 h-6 text-secondary" />,
