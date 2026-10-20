@@ -1,4 +1,4 @@
-export type AuthUser = { id: string; email: string; full_name: string; role: string; is_verified: boolean };
+export type AuthUser = { id: string; email: string; full_name: string; country: string; role: string; is_verified: boolean };
 
 export async function authRequest(path: string, body: unknown): Promise<AuthUser> {
   let response: Response;

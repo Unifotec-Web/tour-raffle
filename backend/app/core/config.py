@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     SESSION_COOKIE_SECURE: bool = False
     SESSION_HOURS: int = 8
     FRONTEND_URL: str = "http://localhost:3000"
+    EMAIL_TOKEN_SECRET: str = "local-development-only-email-token-secret-change-me"
+    EMAIL_DELIVERY_MODE: str = "local"
+    LOCAL_EMAIL_SINK_DIR: str = "/tmp/tour-raffle-mail"
     ENABLE_LOCAL_DRAW: bool = False
     ENABLE_FAKE_PAYMENTS: bool = False
     ENABLE_STRIPE_SANDBOX: bool = False
@@ -27,6 +30,8 @@ class Settings(BaseSettings):
             raise ValueError("Production requires secure cookies and an HTTPS frontend URL")
         if self.APP_ENV == "production" and (self.ENABLE_FAKE_PAYMENTS or self.ENABLE_STRIPE_SANDBOX or self.ENABLE_PAYSTACK_SANDBOX):
             raise ValueError("Production payment execution is disabled")
+        if self.APP_ENV == "production" and (self.EMAIL_TOKEN_SECRET == "local-development-only-email-token-secret-change-me" or len(self.EMAIL_TOKEN_SECRET) < 32 or self.EMAIL_DELIVERY_MODE == "local"):
+            raise ValueError("Production requires a configured email token secret and delivery provider")
         if self.CHECKOUT_HOLD_MINUTES < 1 or self.CHECKOUT_HOLD_MINUTES > 60:
             raise ValueError("Checkout hold must be 1 to 60 minutes")
         return self

@@ -1,15 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function VerificationCompletePage() {
+  const [verified, setVerified] = useState(false);
+  useEffect(() => { setVerified(sessionStorage.getItem('email_verified_recently') === '1'); sessionStorage.removeItem('email_verified_recently'); }, []);
   return (
     <AuthLayout
-      title="Email Verified!"
-      description="Your email address has been successfully verified. You can now access all features."
+      title={verified ? "Email Verified!" : "Email Verification"}
+      description={verified ? "Your email address has been verified." : "Open your email verification link to complete this step."}
       bgImage="https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1600&q=80"
     >
       <div className="space-y-6 text-center">
@@ -18,8 +20,8 @@ export default function VerificationCompletePage() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-extrabold text-primary tracking-tight">Verification Complete</h2>
-          <p className="text-success font-semibold text-sm mt-1">Your email is verified!</p>
+          <h2 className="text-2xl font-extrabold text-primary tracking-tight">{verified ? 'Verification Complete' : 'Verification Pending'}</h2>
+          <p className="text-success font-semibold text-sm mt-1">{verified ? 'Your email is verified.' : 'Use the link sent to your email.'}</p>
         </div>
 
         <div className="space-y-3 pt-4">
@@ -27,7 +29,7 @@ export default function VerificationCompletePage() {
             href="/account/settings"
             className="block w-full text-center bg-accent hover:bg-accent-hover text-primary font-bold py-3 rounded-xl shadow-md transition-colors text-sm"
           >
-            Continue to Dashboard
+            Continue to Account
           </Link>
           <Link
             href="/"

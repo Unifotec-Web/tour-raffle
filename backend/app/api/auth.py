@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_password_hash, new_session_token, token_digest, verify_password
 from app.models.models import AuthAttempt, AuthSession, User
+from app.services.email_lifecycle import issue
 from app.schemas.schemas import UserCreate, UserLogin, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -60,6 +61,8 @@ def register(payload: UserCreate, request: Request, db: Session = Depends(get_db
     db.add(user)
     db.add(AuthAttempt(email=email, ip_address=ip))
     try:
+        db.flush()
+        issue(db, user, "verify")
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -78,6 +81,23 @@ def login(payload: UserLogin, request: Request, response: Response, db: Session 
     if user is None or not user.is_active or not verify_password(payload.password, user.hashed_password):
         record_attempt(db, email, ip)
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = new_session_token()
+    db.add(AuthSession(user_id=user.id, token_hash=token_digest(token), expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=settings.SESSION_HOURS)))
+    db.commit()
+    response.set_cookie(COOKIE, token, max_age=settings.SESSION_HOURS * 3600, httponly=True, secure=settings.SESSION_COOKIE_SECURE, samesite="lax", path="/")
+    return user
+
+
+@router.post("/admin/login", response_model=UserResponse)
+def admin_login(payload: UserLogin, request: Request, response: Response, db: Session = Depends(get_db)):
+    check_origin(request)
+    email = payload.email.lower()
+    ip = request.client.host if request.client else "unknown"
+    check_rate_limit(db, email, ip)
+    user = db.query(User).filter(User.email == email).first()
+    if user is None or not user.is_active or not verify_password(payload.password, user.hashed_password) or user.role not in ("admin", "super_admin"):
+        record_attempt(db, email, ip)
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
     token = new_session_token()
     db.add(AuthSession(user_id=user.id, token_hash=token_digest(token), expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=settings.SESSION_HOURS)))
     db.commit()

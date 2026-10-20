@@ -1,11 +1,35 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { authRequest } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 import AuthLayout from '@/components/auth/AuthLayout';
 import Link from 'next/link';
 import { Check, Mail } from 'lucide-react';
 
 export default function VerifyEmailPage() {
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [pending, setPending] = useState(false);
+  const router = useRouter();
+  useEffect(() => {
+    const confirm = () => {
+      const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
+      if (!token) return;
+      window.history.replaceState(null, '', window.location.pathname);
+      authRequest('verification/confirm', {token}).then(() => { sessionStorage.setItem('email_verified_recently', '1'); router.replace('/verification-complete'); }).catch((error) => setMessage(error instanceof Error ? error.message : 'Link is invalid or expired.'));
+    };
+    confirm();
+    window.addEventListener('hashchange', confirm);
+    return () => window.removeEventListener('hashchange', confirm);
+  }, [router]);
+  async function resend() {
+    if (!email) { setMessage('Enter your email address.'); return; }
+    setPending(true); setMessage('');
+    try { await authRequest('verification/request', {email}); setMessage('If the account is eligible, a link will be sent.'); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Please try again.'); }
+    finally { setPending(false); }
+  }
   return (
     <AuthLayout
       title="Verify Your Email"
@@ -19,8 +43,8 @@ export default function VerifyEmailPage() {
 
         <div>
           <h2 className="text-2xl font-extrabold text-primary tracking-tight">Check Your Email</h2>
-          <p className="text-mutedBlue text-xs mt-1">We sent a verification link to:</p>
-          <p className="text-primary font-bold text-sm mt-0.5">john@example.com</p>
+          <p className="text-mutedBlue text-xs mt-1">Enter your email to request or resend a verification link:</p>
+          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-label="Email address" placeholder="Email address" className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary mt-2" />
         </div>
 
         <div className="bg-lightBlue rounded-xl p-4 text-left space-y-2 text-xs text-textBlue border border-borderBlue">
@@ -35,17 +59,18 @@ export default function VerifyEmailPage() {
           </div>
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-success shrink-0" />
-            <span>Click &quot;Resend Email&quot; if needed</span>
+            <span>Click &quot;Send Verification Email&quot; if needed</span>
           </div>
         </div>
 
         <button
-          onClick={() => {}}
+          onClick={resend} disabled={pending}
           className="w-full bg-accent hover:bg-accent-hover text-primary font-bold py-3 rounded-xl shadow-md transition-colors text-sm"
         >
-          Resend Email
+          {pending ? 'Sending…' : 'Send Verification Email'}
         </button>
 
+        {message && <p role="status" className="text-xs text-secondary">{message}</p>}
         <div className="text-center pt-1">
           <Link href="/sign-in" className="text-secondary font-bold text-xs hover:underline">
             Back to Sign In

@@ -5,9 +5,25 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
 import { Shield, Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { authRequest } from '@/lib/auth';
 
 export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+  const router = useRouter();
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setPending(true); setError('');
+    const values = new FormData(event.currentTarget);
+    try {
+      await authRequest('admin/login', {email: values.get('email'), password: values.get('password')});
+      const check = await fetch('/api/v1/admin/me', {credentials: 'include'});
+      if (!check.ok) throw new Error('Admin access is required.');
+      router.push('/admin'); router.refresh();
+    } catch (err) { setError(err instanceof Error ? err.message : 'Sign in failed.'); }
+    finally { setPending(false); }
+  }
 
   return (
     <main className="min-h-screen flex flex-col bg-white">
@@ -23,11 +39,11 @@ export default function AdminLoginPage() {
             <p className="text-mutedBlue text-xs">Welcome back! Please sign in to your admin account.</p>
           </div>
 
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+          <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-primary mb-1">Email Address</label>
               <input
-                type="email"
+                type="email" name="email" required
                 placeholder="enter your email address"
                 className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 px-3.5 text-sm text-primary placeholder-mutedBlue focus:outline-none focus:border-secondary transition-colors"
               />
@@ -37,7 +53,7 @@ export default function AdminLoginPage() {
               <label className="block text-xs font-bold text-primary mb-1">Password</label>
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? 'text' : 'password'} name="password" required
                   placeholder="enter your password"
                   className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 pl-3.5 pr-10 text-sm text-primary placeholder-mutedBlue focus:outline-none focus:border-secondary transition-colors"
                 />
@@ -60,12 +76,13 @@ export default function AdminLoginPage() {
               <Link href="/forgot-password" className="text-secondary font-semibold hover:underline">Forgot password?</Link>
             </div>
 
-            <Link
-              href="/admin"
+            <button
+              type="submit" disabled={pending}
               className="block w-full text-center bg-accent hover:bg-accent-hover text-primary font-bold py-3 rounded-xl shadow-md transition-colors text-sm"
             >
-              Sign In
-            </Link>
+              {pending ? 'Signing In…' : 'Sign In'}
+            </button>
+            {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
           </form>
 
           <p className="text-center text-[11px] text-mutedBlue">

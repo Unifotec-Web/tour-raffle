@@ -4,10 +4,24 @@ import React, { useState } from 'react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
+import { authRequest } from '@/lib/auth';
 
 export default function ResetPasswordPage() {
   const [show1, setShow1] = useState(false);
   const [show2, setShow2] = useState(false);
+  const [message, setMessage] = useState('');
+  const [done, setDone] = useState(false);
+  const [pending, setPending] = useState(false);
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const values = new FormData(event.currentTarget);
+    if (values.get('password') !== values.get('confirm')) { setMessage('Passwords do not match.'); return; }
+    const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
+    if (!token) { setMessage('This reset link is missing or invalid.'); return; }
+    setPending(true); setMessage('');
+    try { await authRequest('password/reset', {token, password: values.get('password')}); setDone(true); window.history.replaceState(null, '', window.location.pathname); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to reset password.'); }
+    finally { setPending(false); }
+  }
 
   return (
     <AuthLayout
@@ -21,12 +35,12 @@ export default function ResetPasswordPage() {
           <p className="text-mutedBlue text-xs mt-1">Please enter your new password below.</p>
         </div>
 
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-primary mb-1">New Password</label>
             <div className="relative">
               <input
-                type={show1 ? 'text' : 'password'}
+                type={show1 ? 'text' : 'password'} name="password" required minLength={12}
                 placeholder="Create a strong password"
                 className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 pl-3.5 pr-10 text-sm text-primary placeholder-mutedBlue focus:outline-none focus:border-secondary transition-colors"
               />
@@ -45,7 +59,7 @@ export default function ResetPasswordPage() {
             <label className="block text-xs font-bold text-primary mb-1">Confirm Password</label>
             <div className="relative">
               <input
-                type={show2 ? 'text' : 'password'}
+                type={show2 ? 'text' : 'password'} name="confirm" required minLength={12}
                 placeholder="Confirm your password"
                 className="w-full bg-lightBlue border border-borderBlue rounded-xl py-2.5 pl-3.5 pr-10 text-sm text-primary placeholder-mutedBlue focus:outline-none focus:border-secondary transition-colors"
               />
@@ -61,11 +75,13 @@ export default function ResetPasswordPage() {
           </div>
 
           <button
-            type="submit"
+            type="submit" disabled={pending || done}
             className="w-full bg-accent hover:bg-accent-hover text-primary font-bold py-3 rounded-xl shadow-md transition-colors text-sm"
           >
-            Reset Password
+            {pending ? 'Resetting…' : done ? 'Password Reset' : 'Reset Password'}
           </button>
+          {message && <p role="alert" className="text-xs text-secondary">{message}</p>}
+          {done && <p role="status" className="text-xs text-success">Password reset. Sign in with your new password.</p>}
         </form>
 
         <div className="text-center pt-2">

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.auth import router as auth_router
+from app.api.email_lifecycle import router as email_lifecycle_router
 from app.api.campaigns import router as campaigns_router
 from app.api.admin_campaigns import router as admin_campaigns_router
 from app.api.draws import admin_router as admin_draws_router, public_router as draws_router
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
+app.include_router(email_lifecycle_router, prefix=settings.API_V1_PREFIX)
 app.include_router(campaigns_router, prefix=settings.API_V1_PREFIX)
 app.include_router(admin_campaigns_router, prefix=settings.API_V1_PREFIX)
 app.include_router(admin_draws_router, prefix=settings.API_V1_PREFIX)

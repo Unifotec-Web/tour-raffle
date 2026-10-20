@@ -35,6 +35,40 @@ class AuthAttempt(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     __table_args__ = (Index("ix_auth_attempts_email_created", "email", "created_at"), Index("ix_auth_attempts_ip_created", "ip_address", "created_at"))
 
+class EmailCredential(Base):
+    __tablename__ = "email_credentials"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    purpose = Column(String(10), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    expires_at = Column(DateTime, nullable=False)
+    consumed_at = Column(DateTime)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (CheckConstraint("purpose IN ('verify', 'reset')", name="email_credential_purpose_valid"),)
+
+class EmailOutbox(Base):
+    __tablename__ = "email_outbox"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    credential_id = Column(UUID(as_uuid=True), ForeignKey("email_credentials.id"), nullable=False, unique=True)
+    purpose = Column(String(10), nullable=False)
+    recipient = Column(String(255), nullable=False)
+    status = Column(String(20), nullable=False, default="pending")
+    attempts = Column(Integer, nullable=False, default=0)
+    next_attempt_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    delivered_at = Column(DateTime)
+    __table_args__ = (CheckConstraint("status IN ('pending', 'delivered', 'failed', 'cancelled')", name="email_outbox_status_valid"),)
+
+class EmailRateBucket(Base):
+    __tablename__ = "email_rate_buckets"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    scope = Column(String(40), nullable=False)
+    principal_hash = Column(String(64), nullable=False)
+    window_start = Column(DateTime, nullable=False)
+    attempts = Column(Integer, nullable=False, default=0)
+    __table_args__ = (UniqueConstraint("scope", "principal_hash", "window_start", name="uq_email_rate_bucket"), CheckConstraint("attempts > 0", name="email_rate_attempts_positive"))
+
 class LookupBucket(Base):
     __tablename__ = "lookup_buckets"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

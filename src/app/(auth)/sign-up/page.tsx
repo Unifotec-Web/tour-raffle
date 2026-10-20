@@ -24,7 +24,7 @@ export default function SignUpPage() {
         password: fields.get('password'), country: fields.get('country'),
         accept_terms: fields.get('terms') === 'on',
       });
-      router.push('/sign-in?registered=1');
+      router.push('/verify-email');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Account creation failed.');
     } finally {
