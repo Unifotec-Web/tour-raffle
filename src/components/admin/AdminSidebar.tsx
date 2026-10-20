@@ -4,33 +4,20 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
   Megaphone,
-  Ticket,
-  Users,
   CreditCard,
   CheckSquare,
   Trophy,
-  FileSpreadsheet,
-  ShieldAlert,
-  Settings
 } from 'lucide-react';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="w-4 h-4" /> },
     { name: 'Campaigns', href: '/admin/campaigns', icon: <Megaphone className="w-4 h-4" /> },
-    { name: 'Coupons', href: '/admin/coupons', icon: <Ticket className="w-4 h-4" /> },
-    { name: 'Users', href: '/admin/users', icon: <Users className="w-4 h-4" /> },
     { name: 'Payments', href: '/admin/payments', icon: <CreditCard className="w-4 h-4" /> },
-    { name: 'Entries', href: '/admin/entries', icon: <CheckSquare className="w-4 h-4" /> },
     { name: 'Draws', href: '/admin/draws', icon: <Trophy className="w-4 h-4" /> },
     { name: 'Claims', href: '/admin/claims', icon: <CheckSquare className="w-4 h-4" /> },
-    { name: 'Reports', href: '/admin/exports', icon: <FileSpreadsheet className="w-4 h-4" /> },
-    { name: 'Audit', href: '/admin/audit', icon: <ShieldAlert className="w-4 h-4" /> },
-    { name: 'Settings', href: '/admin/settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
   return (

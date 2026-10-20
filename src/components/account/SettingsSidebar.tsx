@@ -3,18 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Lock, Shield, Bell, LockKeyhole, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 export default function SettingsSidebar() {
   const pathname = usePathname();
 
   const links = [
     { name: 'Account Settings', href: '/account/settings', icon: <Settings className="w-4 h-4" /> },
-    { name: 'Profile Information', href: '/account/profile', icon: <User className="w-4 h-4" /> },
-    { name: 'Change Password', href: '/account/change-password', icon: <Lock className="w-4 h-4" /> },
-    { name: 'Account Security', href: '/account/security', icon: <Shield className="w-4 h-4" /> },
-    { name: 'Notifications', href: '/account/notifications', icon: <Bell className="w-4 h-4" /> },
-    { name: 'Privacy Settings', href: '/account/privacy', icon: <LockKeyhole className="w-4 h-4" /> },
   ];
 
   return (

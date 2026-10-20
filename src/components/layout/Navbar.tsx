@@ -3,11 +3,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Plane, Search, Menu, X } from 'lucide-react';
+import { Plane, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const portal = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -17,9 +18,25 @@ export default function Navbar() {
     { name: 'Winners', href: '/winners' },
     { name: 'FAQs', href: '/faqs' },
   ];
+  const mobileAccountLinks = pathname.startsWith('/admin/') && pathname !== '/admin/login'
+    ? [
+        { name: 'Campaigns', href: '/admin/campaigns' },
+        { name: 'Payments', href: '/admin/payments' },
+        { name: 'Draws', href: '/admin/draws' },
+        { name: 'Claims', href: '/admin/claims' },
+      ]
+    : pathname.startsWith('/dashboard')
+      ? [
+          { name: 'Dashboard', href: '/dashboard' },
+          { name: 'My Coupons', href: '/dashboard/coupons' },
+          { name: 'My Entries', href: '/dashboard/entries' },
+          { name: 'My Payments', href: '/dashboard/payments' },
+          { name: 'My Wins', href: '/dashboard/draws/my-wins' },
+        ]
+      : [];
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-50 bg-transparent transition-all duration-220">
+    <header className={`absolute top-0 left-0 right-0 z-50 transition-all duration-220 ${portal ? 'bg-primary-dark' : 'bg-transparent'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[70px] flex items-center justify-between">
 
         {/* Logo */}
@@ -55,9 +72,6 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div className="hidden md:flex items-center gap-4">
-          <button aria-label="Search" className="w-9 h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
-            <Search className="w-4 h-4" />
-          </button>
           <Link
             href="/sign-in"
             className="text-white text-sm font-medium hover:text-accent transition-colors px-3 py-2 active:scale-95"
@@ -87,6 +101,9 @@ export default function Navbar() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#002B49]/98 backdrop-blur-md px-6 py-6 border-b border-white/10 text-white space-y-4 shadow-xl transition-all">
+          {mobileAccountLinks.length > 0 && <div className="space-y-4 border-b border-white/10 pb-4">
+            {mobileAccountLinks.map(link => <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)} className={`block text-base font-medium ${pathname === link.href ? 'text-accent' : 'hover:text-accent'}`}>{link.name}</Link>)}
+          </div>}
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (

@@ -9,10 +9,6 @@ import {
   CheckSquare,
   Trophy,
   CreditCard,
-  History,
-  Bell,
-  Headphones,
-  UserCog
 } from 'lucide-react';
 
 export default function DashboardSidebar() {
@@ -24,10 +20,6 @@ export default function DashboardSidebar() {
     { name: 'My Entries', href: '/dashboard/entries', icon: <CheckSquare className="w-4 h-4" /> },
     { name: 'My Wins', href: '/dashboard/draws/my-wins', icon: <Trophy className="w-4 h-4" /> },
     { name: 'My Payments', href: '/dashboard/payments', icon: <CreditCard className="w-4 h-4" /> },
-    { name: 'Transaction History', href: '/dashboard/transactions', icon: <History className="w-4 h-4" /> },
-    { name: 'Notifications', href: '/dashboard/notifications', icon: <Bell className="w-4 h-4" />, badge: 2 },
-    { name: 'Support Tickets', href: '/dashboard/support', icon: <Headphones className="w-4 h-4" /> },
-    { name: 'Profile Settings', href: '/dashboard/profile', icon: <UserCog className="w-4 h-4" /> },
   ];
 
   return (
@@ -49,11 +41,6 @@ export default function DashboardSidebar() {
                 {item.icon}
                 <span>{item.name}</span>
               </div>
-              {item.badge && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-primary text-white' : 'bg-accent text-primary'}`}>
-                  {item.badge}
-                </span>
-              )}
             </Link>
           );
         })}

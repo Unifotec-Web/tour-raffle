@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
       await authRequest('admin/login', {email: values.get('email'), password: values.get('password')});
       const check = await fetch('/api/v1/admin/me', {credentials: 'include'});
       if (!check.ok) throw new Error('Admin access is required.');
-      router.push('/admin'); router.refresh();
+      router.push('/admin/campaigns'); router.refresh();
     } catch (err) { setError(err instanceof Error ? err.message : 'Sign in failed.'); }
     finally { setPending(false); }
   }
