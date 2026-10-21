@@ -115,6 +115,9 @@ class CampaignAdminResponse(BaseModel):
     max_capacity: int
     winner_count: int
     current_entries: int
+    issued_count: int
+    unused_reservations: int
+    active_holds: int
     status: str
     start_date: datetime
     end_date: datetime

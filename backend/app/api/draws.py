@@ -56,6 +56,7 @@ def list_draws(_: User = Depends(get_current_admin), db: Session = Depends(get_d
     runs = {run.campaign_id: run for run in db.scalars(select(DrawRun).where(DrawRun.campaign_id.in_([c.id for c in campaigns])))}
     return [{"campaign_id": str(c.id), "campaign_name": c.name, "campaign_status": c.status,
              "entry_count": c.current_entries, "winner_count": c.winner_count,
+             "actions_enabled": settings.APP_ENV in ("development", "test") and settings.ENABLE_LOCAL_DRAW,
              "draw": detail(db, runs[c.id], False) if c.id in runs else None} for c in campaigns]
 
 

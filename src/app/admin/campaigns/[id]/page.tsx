@@ -57,6 +57,12 @@ export default function AdminCampaignDetailPage() {
             {message && <p role="status" className="text-success text-xs font-semibold">{message}</p>}
             {campaign.allowed_transitions.length === 0 && <p className="text-mutedBlue text-xs">No status transition is currently available.</p>}
           </div>
+          <div className="bg-white border border-borderBlue rounded-2xl p-6 shadow-card space-y-3 text-sm text-primary">
+            <h2 className="text-xl font-extrabold">Coupon and entry information</h2>
+            <p>{campaign.current_entries.toLocaleString()} confirmed entries · {campaign.unused_reservations.toLocaleString()} unused purchased coupons · {campaign.active_holds.toLocaleString()} checkout holds · {campaign.issued_count.toLocaleString()} codes issued</p>
+            <p>Coupons cost $10.00 USD each. A purchased coupon becomes draw eligible only after registration.</p>
+            <Link href="/admin/draws" className="text-secondary font-bold hover:underline">View draw controls →</Link>
+          </div>
           <CampaignForm campaign={campaign} onSaved={setCampaign} />
         </>}
       </div>

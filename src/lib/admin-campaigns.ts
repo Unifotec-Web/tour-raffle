@@ -9,6 +9,9 @@ export type AdminCampaign = {
   max_capacity: number;
   winner_count: number;
   current_entries: number;
+  issued_count: number;
+  unused_reservations: number;
+  active_holds: number;
   status: string;
   start_date: string;
   end_date: string;

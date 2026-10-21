@@ -69,8 +69,8 @@ export default function AdminCampaignsPage() {
                         {c.status[0].toUpperCase() + c.status.slice(1)}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-mutedBlue">{new Date(`${c.start_date}Z`).toLocaleDateString()}</td>
-                    <td className="py-3.5 px-4 text-mutedBlue">{new Date(`${c.end_date}Z`).toLocaleDateString()}</td>
+                    <td className="py-3.5 px-4 text-mutedBlue">{new Date(`${c.start_date}Z`).toLocaleString()}</td>
+                    <td className="py-3.5 px-4 text-mutedBlue">{new Date(`${c.end_date}Z`).toLocaleString()}</td>
                     <td className="py-3.5 px-4 text-right">
                       <Link href={`/admin/campaigns/${c.id}`} className="inline-block px-3 py-1.5 rounded-lg border border-borderBlue bg-lightBlue text-primary text-[11px] font-semibold hover:bg-white transition-colors">
                         View

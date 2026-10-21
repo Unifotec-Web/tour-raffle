@@ -21,6 +21,10 @@ A static comparison of 68 App Router pages with literal internal links still fin
 
 ## Oscar's decisions and remaining policy
 
+### Admin campaign workflow follow-up (21 October 2026)
+
+The campaign editor now captures local start and closure times explicitly, shows the browser timezone, and submits UTC timestamps. Its coupon price display is fixed at $10 USD, matching server validation. Campaign detail displays server counts for entries, unused purchased coupons, checkout holds, and issued codes; the editor disables rule fields after any of those commitments. Draw controls are hidden when the server reports that local draw mutations are disabled. Server role checks, audit records, rule locks, and capacity checks remain authoritative. The sample coupon inventory and generation pages are still disconnected mock screens and should not be treated as operational controls. Production draws and live payments remain disabled.
+
 The server computes `quantity × $10.00 USD`, without discounts. Each verified purchased coupon reserves one slot and gets a secure code; purchase alone is not an entry. Registration closes at the entry limit or deadline. Unused purchased coupons expire at closure and enter separate remedy review without automatic refund/forfeiture. Orders retain price/currency and applicable FX snapshot. Entries + unused reservations + active holds are bounded by capacity, and cumulative issuance is conservatively capped; expired/refunded codes are not automatically resold. Stripe/Paystack are interchangeable disabled-by-default sandbox adapters. Source: `backend/app/services/orders.py`, `backend/app/api/orders.py`, `backend/app/models/models.py`; M5 explains counting/locking. Decisions remain for paid unused/late/unissued coupons, refunds/disputes, replacement codes, non-USD settlement, eligibility and claim fulfillment. Review records do not execute these remedies.
 
 ## Prioritized work
