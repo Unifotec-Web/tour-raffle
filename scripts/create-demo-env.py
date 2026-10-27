@@ -12,7 +12,7 @@ if path.exists():
     parser.error(f"{path} already exists; remove it explicitly before creating new credentials")
 values = {
     "APP_ENV": "test",
-    "FRONTEND_URL": "http://127.0.0.1:3000",
+    "FRONTEND_URL": "http://localhost:3000",
     "DATABASE_URL": "postgresql://tour_raffle_verify:local-verify-only@127.0.0.1:55432/tour_raffle_verify",
     "EMAIL_DELIVERY_MODE": "local",
     "LOCAL_EMAIL_SINK_DIR": "/tmp/tour-raffle-demo-mail",

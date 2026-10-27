@@ -37,6 +37,8 @@ cd ..
 
 If `/tmp/tour-raffle-demo.env` already exists, reuse it or remove it deliberately before creating new credentials. Keep the file private and outside version control. The fixed database password in these commands is solely for the disposable localhost database.
 
+Open the demo at `http://localhost:3000`. In local/test mode, FastAPI accepts only the exact `http://localhost:3000` and `http://127.0.0.1:3000` browser origins when the configured frontend URL is one of those addresses. The configured `FRONTEND_URL` is used for email and payment return links; production accepts only its configured HTTPS origin. If reusing an older demo env file with `FRONTEND_URL=http://127.0.0.1:3000`, change that one setting to `http://localhost:3000` and restart FastAPI; retain the existing secrets and database.
+
 ## Start, run, and stop
 
 Start FastAPI in one terminal:

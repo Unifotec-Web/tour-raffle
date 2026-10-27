@@ -20,7 +20,7 @@ COOKIE = "tour_raffle_session"
 def check_origin(request: Request) -> None:
     # Browser cookie mutations must originate from the configured frontend.
     origin = request.headers.get("origin")
-    if origin != settings.FRONTEND_URL:
+    if origin not in settings.allowed_frontend_origins:
         raise HTTPException(status_code=403, detail="Invalid request origin")
 
 

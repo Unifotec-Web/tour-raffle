@@ -38,6 +38,29 @@ def override_db():
 app.dependency_overrides[get_db] = override_db
 origin = {"Origin": "http://localhost:3000"}
 
+def test_exact_local_origins_and_production_boundary():
+    local = Settings(APP_ENV="test", FRONTEND_URL="http://localhost:3000")
+    assert set(local.allowed_frontend_origins) == {"http://localhost:3000", "http://127.0.0.1:3000"}
+    development = Settings(APP_ENV="development", FRONTEND_URL="http://127.0.0.1:3000")
+    assert set(development.allowed_frontend_origins) == set(local.allowed_frontend_origins)
+    assert "http://localhost.evil.example:3000" not in local.allowed_frontend_origins
+    assert Settings(APP_ENV="test", FRONTEND_URL="https://demo.example.com").allowed_frontend_origins == ["https://demo.example.com"]
+    staging = Settings(APP_ENV="staging", FRONTEND_URL="https://raffle-staging.unifotecweb.com", SESSION_COOKIE_SECURE=True, EMAIL_TOKEN_SECRET="a" * 48, EMAIL_DELIVERY_MODE="disabled")
+    assert staging.allowed_frontend_origins == ["https://raffle-staging.unifotecweb.com"]
+    production = Settings(APP_ENV="production", FRONTEND_URL="https://tour-raffle.example", SESSION_COOKIE_SECURE=True, EMAIL_TOKEN_SECRET="a" * 48, EMAIL_DELIVERY_MODE="provider")
+    assert production.allowed_frontend_origins == ["https://tour-raffle.example"]
+
+def test_local_cors_preflight_rejects_other_origins():
+    client = TestClient(app)
+    headers = {"Access-Control-Request-Method": "POST"}
+    for allowed in ("http://localhost:3000", "http://127.0.0.1:3000"):
+        result = client.options("/api/v1/auth/login", headers={**headers, "Origin": allowed})
+        assert result.status_code == 200
+        assert result.headers["access-control-allow-origin"] == allowed
+    denied = client.options("/api/v1/auth/login", headers={**headers, "Origin": "http://localhost.evil.example:3000"})
+    assert denied.status_code == 400
+    assert "access-control-allow-origin" not in denied.headers
+
 def test_registration_login_logout_and_server_permissions():
     client = TestClient(app)
     payload = {"email": "Traveler@example.com", "password": "LongPassword123!", "full_name": "Test Traveler", "country": "Ghana", "accept_terms": True}

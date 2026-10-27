@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     CLAIM_REQUIRE_PHONE: bool = False
     CLAIM_REQUIRE_PREFERENCE_NOTE: bool = False
 
+    @property
+    def allowed_frontend_origins(self) -> list[str]:
+        origins = [self.FRONTEND_URL]
+        local_origins = ("http://localhost:3000", "http://127.0.0.1:3000")
+        if self.APP_ENV in ("development", "test") and self.FRONTEND_URL in local_origins:
+            origins = list(local_origins)
+        return origins
+
     @model_validator(mode="after")
     def validate_production(self):
         if self.APP_ENV not in ("development", "test", "staging", "production"):
