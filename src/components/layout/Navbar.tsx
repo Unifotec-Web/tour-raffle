@@ -4,10 +4,16 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Plane, Menu, X } from 'lucide-react';
+import { logoutSession, useSession } from '@/lib/session';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
   const pathname = usePathname();
+  const session = useSession(pathname);
+  const signedIn = session.status === 'signed-in';
+  const admin = signedIn && ['admin', 'super_admin'].includes(session.user!.role);
   const portal = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
 
   const navLinks = [
@@ -18,22 +24,37 @@ export default function Navbar() {
     { name: 'Winners', href: '/winners' },
     { name: 'FAQs', href: '/faqs' },
   ];
-  const mobileAccountLinks = pathname.startsWith('/admin/') && pathname !== '/admin/login'
+  const mobileAccountLinks = admin
     ? [
-        { name: 'Campaigns', href: '/admin/campaigns' },
+        { name: 'Admin Portal', href: '/admin/campaigns' },
         { name: 'Payments', href: '/admin/payments' },
         { name: 'Draws', href: '/admin/draws' },
         { name: 'Claims', href: '/admin/claims' },
+        { name: 'Dashboard', href: '/dashboard' },
+        { name: 'Account', href: '/account/settings' },
       ]
-    : pathname.startsWith('/dashboard')
+    : signedIn
       ? [
           { name: 'Dashboard', href: '/dashboard' },
           { name: 'My Coupons', href: '/dashboard/coupons' },
           { name: 'My Entries', href: '/dashboard/entries' },
           { name: 'My Payments', href: '/dashboard/payments' },
           { name: 'My Wins', href: '/dashboard/draws/my-wins' },
+          { name: 'Account', href: '/account/settings' },
         ]
       : [];
+
+  const signOut = async () => {
+    setLogoutPending(true); setLogoutError('');
+    try {
+      await logoutSession();
+      setMobileMenuOpen(false);
+      window.location.assign('/');
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'Unable to sign out.');
+      setLogoutPending(false);
+    }
+  };
 
   return (
     <header className={`absolute top-0 left-0 right-0 z-50 transition-all duration-220 ${portal ? 'bg-primary-dark' : 'bg-transparent'}`}>
@@ -72,18 +93,16 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div className="hidden md:flex items-center gap-4">
-          <Link
-            href="/sign-in"
-            className="text-white text-sm font-medium hover:text-accent transition-colors px-3 py-2 active:scale-95"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/current-raffle"
-            className="bg-accent hover:bg-accent-hover text-primary text-sm font-bold px-5 py-2.5 rounded-pill shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95"
-          >
-            Enter Raffle
-          </Link>
+          {session.status === 'signed-out' && <>
+            <Link href="/sign-in" className="text-white text-sm font-medium hover:text-accent transition-colors px-3 py-2 active:scale-95">Sign In</Link>
+            <Link href="/current-raffle" className="bg-accent hover:bg-accent-hover text-primary text-sm font-bold px-5 py-2.5 rounded-pill shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95">Enter Raffle</Link>
+          </>}
+          {signedIn && <>
+            <Link href="/account/settings" className="text-white text-sm font-medium hover:text-accent transition-colors px-3 py-2">Account</Link>
+            <button type="button" onClick={signOut} disabled={logoutPending} className="text-white text-sm font-medium hover:text-accent transition-colors px-3 py-2 disabled:opacity-60">{logoutPending ? 'Signing Out…' : 'Log Out'}</button>
+            <Link href={admin ? '/admin/campaigns' : '/dashboard'} className="bg-accent hover:bg-accent-hover text-primary text-sm font-bold px-5 py-2.5 rounded-pill shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95">{admin ? 'Admin Portal' : 'Dashboard'}</Link>
+          </>}
+          {logoutError && <span role="alert" className="text-red-200 text-xs">{logoutError}</span>}
         </div>
 
         {/* Mobile menu button */}
@@ -118,20 +137,22 @@ export default function Navbar() {
             );
           })}
           <div className="pt-4 flex flex-col gap-3">
-            <Link
+            {session.status === 'signed-out' && <Link
               href="/sign-in"
               onClick={() => setMobileMenuOpen(false)}
               className="text-center py-2.5 rounded-pill border border-white/20 text-white font-medium"
             >
               Sign In
-            </Link>
-            <Link
+            </Link>}
+            {session.status === 'signed-out' && <Link
               href="/current-raffle"
               onClick={() => setMobileMenuOpen(false)}
               className="text-center py-2.5 rounded-pill bg-accent text-primary font-bold shadow-md"
             >
               Enter Raffle
-            </Link>
+            </Link>}
+            {signedIn && <button type="button" onClick={signOut} disabled={logoutPending} className="text-center py-2.5 rounded-pill border border-white/20 text-white font-medium disabled:opacity-60">{logoutPending ? 'Signing Out…' : 'Log Out'}</button>}
+            {logoutError && <p role="alert" className="text-red-200 text-xs">{logoutError}</p>}
           </div>
         </div>
       )}

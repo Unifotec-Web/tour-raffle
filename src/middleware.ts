@@ -11,11 +11,17 @@ export async function middleware(request: NextRequest) {
       cache: 'no-store',
     });
     if (response.ok) return NextResponse.next();
+    if (admin && response.status === 403) {
+      const dashboard = request.nextUrl.clone();
+      dashboard.pathname = '/dashboard';
+      dashboard.search = '';
+      return NextResponse.redirect(dashboard);
+    }
   } catch {
     // A missing backend fails closed for private pages.
   }
   const signIn = request.nextUrl.clone();
-  signIn.pathname = '/sign-in';
+  signIn.pathname = admin ? '/admin/login' : '/sign-in';
   signIn.search = '';
   return NextResponse.redirect(signIn);
 }

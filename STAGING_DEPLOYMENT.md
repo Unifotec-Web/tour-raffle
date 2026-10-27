@@ -43,6 +43,14 @@ STAGING_FIXTURE_CONFIRM=create-synthetic-accounts python -m scripts.seed_staging
 unset STAGING_ADMIN_EMAIL STAGING_MEMBER_EMAIL STAGING_ADMIN_PASSWORD STAGING_MEMBER_PASSWORD
 ```
 
+## Browser access and recovery
+
+The gateway challenges every path with HTTP Basic authentication before the app's cookie session is checked. A fresh unauthenticated HTTPS request to `/` should return `401` with `WWW-Authenticate: Basic realm="restricted"`; after the gateway accepts credentials, `/` should return `200`. `/api/v1/auth/session` returns `401` until the user signs into the app, then `200` with the server-side role. Admin accounts signing in through `/sign-in` land on `/admin/campaigns`; members land on `/dashboard`. A member request to `/admin/campaigns` is redirected to the member dashboard, and the admin API still rejects it with `403`.
+
+If a normal browser profile shows `ERR_TOO_MANY_RETRIES` while a fresh profile works, inspect the first document request in DevTools Network with **Preserve log** enabled. Record its status, `Location`, and `WWW-Authenticate` response headers, plus the final URL; omit `Authorization`, `Cookie`, passwords, and token values. Repeated `401` responses from Caddy point to the gateway challenge or saved Basic credentials; repeated `30x` responses point to redirect handling. A `200` document followed by a failed `/api/v1/auth/session` or JavaScript request points to app session or cached assets. A fetch with `credentials: "omit"` cannot verify a browser's authenticated gateway or app session. The `ERR_TOO_MANY_RETRIES` screenshot alone does not establish which layer failed.
+
+For a one-time recovery **after recording the failing request**, close all tabs for the staging host, clear only `raffle-staging.unifotecweb.com` site data (cookies and cached files), fully quit and reopen the browser to drop its in-memory HTTP Basic credential cache, then revisit the HTTPS URL and enter the current gateway credentials. Sign into the app again. Do not clear unrelated sites or disable cookie, Origin, or gateway protections. If the failure remains, compare the sanitized Network sequence with a fresh profile and inspect gateway logs before changing server settings.
+
 ## Backup, rollback, and operations
 
 Enable a scheduled backup for the `postgres_data` named volume to the team's configured backup destination before meaningful staging data is created. Dokploy [backs up named volumes](https://docs.dokploy.com/docs/core/volume-backups); bind mounts are unsuitable for that feature. Periodically test restore into a separate isolated Compose project. Also take a PostgreSQL logical backup before any schema migration: from the server's Compose directory run `docker compose -f compose.staging.yml exec -T db pg_dump -Fc -U tour_raffle -d tour_raffle_staging > staging-before-migration.dump`, then transfer that file to restricted off-host storage and remove the server copy after verifying the transfer.

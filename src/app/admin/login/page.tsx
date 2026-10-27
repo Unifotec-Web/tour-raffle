@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authRequest } from '@/lib/auth';
+import { announceSessionChange } from '@/lib/session';
 
 export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -20,7 +21,8 @@ export default function AdminLoginPage() {
       await authRequest('admin/login', {email: values.get('email'), password: values.get('password')});
       const check = await fetch('/api/v1/admin/me', {credentials: 'include'});
       if (!check.ok) throw new Error('Admin access is required.');
-      router.push('/admin/campaigns'); router.refresh();
+      announceSessionChange();
+      router.replace('/admin/campaigns'); router.refresh();
     } catch (err) { setError(err instanceof Error ? err.message : 'Sign in failed.'); }
     finally { setPending(false); }
   }

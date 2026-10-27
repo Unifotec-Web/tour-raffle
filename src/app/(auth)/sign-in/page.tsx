@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authRequest } from '@/lib/auth';
+import { announceSessionChange } from '@/lib/session';
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,8 +20,14 @@ export default function SignInPage() {
     setError('');
     const fields = new FormData(event.currentTarget);
     try {
-      await authRequest('login', { email: fields.get('email'), password: fields.get('password') });
-      router.push('/dashboard');
+      const user = await authRequest('login', { email: fields.get('email'), password: fields.get('password') });
+      const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+      if (isAdmin) {
+        const check = await fetch('/api/v1/admin/me', { credentials: 'include', cache: 'no-store' });
+        if (!check.ok) throw new Error('Admin access could not be verified. Please sign in again.');
+      }
+      announceSessionChange();
+      router.replace(isAdmin ? '/admin/campaigns' : '/dashboard');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed.');
