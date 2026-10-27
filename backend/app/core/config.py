@@ -26,12 +26,16 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production(self):
-        if self.APP_ENV == "production" and (not self.SESSION_COOKIE_SECURE or not self.FRONTEND_URL.startswith("https://")):
-            raise ValueError("Production requires secure cookies and an HTTPS frontend URL")
-        if self.APP_ENV == "production" and (self.ENABLE_FAKE_PAYMENTS or self.ENABLE_STRIPE_SANDBOX or self.ENABLE_PAYSTACK_SANDBOX):
-            raise ValueError("Production payment execution is disabled")
-        if self.APP_ENV == "production" and (self.EMAIL_TOKEN_SECRET == "local-development-only-email-token-secret-change-me" or len(self.EMAIL_TOKEN_SECRET) < 32 or self.EMAIL_DELIVERY_MODE == "local"):
-            raise ValueError("Production requires a configured email token secret and delivery provider")
+        if self.APP_ENV not in ("development", "test", "staging", "production"):
+            raise ValueError("Unknown application environment")
+        if self.APP_ENV in ("staging", "production") and (not self.SESSION_COOKIE_SECURE or not self.FRONTEND_URL.startswith("https://")):
+            raise ValueError("Staging and production require secure cookies and an HTTPS frontend URL")
+        if self.APP_ENV in ("staging", "production") and (self.ENABLE_LOCAL_DRAW or self.ENABLE_FAKE_PAYMENTS or self.ENABLE_STRIPE_SANDBOX or self.ENABLE_PAYSTACK_SANDBOX):
+            raise ValueError("Staging and production payment and draw execution are disabled")
+        if self.APP_ENV in ("staging", "production") and (self.EMAIL_TOKEN_SECRET == "local-development-only-email-token-secret-change-me" or len(self.EMAIL_TOKEN_SECRET) < 32 or self.EMAIL_DELIVERY_MODE == "local"):
+            raise ValueError("Staging and production require a configured email token secret and non-local delivery mode")
+        if self.APP_ENV == "staging" and self.EMAIL_DELIVERY_MODE != "disabled":
+            raise ValueError("Staging messaging must remain disabled")
         if self.CHECKOUT_HOLD_MINUTES < 1 or self.CHECKOUT_HOLD_MINUTES > 60:
             raise ValueError("Checkout hold must be 1 to 60 minutes")
         return self

@@ -17,7 +17,7 @@ from fastapi import Depends
 app = FastAPI(
     title=settings.APP_NAME,
     version="1.0.0",
-    docs_url="/docs" if settings.APP_ENV != "production" else None,
+    docs_url="/docs" if settings.APP_ENV in ("development", "test") else None,
     redoc_url=None,
 )
 

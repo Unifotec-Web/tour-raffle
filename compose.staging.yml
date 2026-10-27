@@ -1,0 +1,104 @@
+name: tour-raffle-staging
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: tour_raffle_staging
+      POSTGRES_USER: tour_raffle
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Dokploy}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tour_raffle -d tour_raffle_staging"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./backend
+    environment: &api_environment
+      APP_ENV: staging
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in Dokploy}
+      FRONTEND_URL: https://raffle-staging.unifotecweb.com
+      SESSION_COOKIE_SECURE: "true"
+      EMAIL_TOKEN_SECRET: ${EMAIL_TOKEN_SECRET:?Set EMAIL_TOKEN_SECRET in Dokploy}
+      EMAIL_DELIVERY_MODE: disabled
+      ENABLE_LOCAL_DRAW: "false"
+      ENABLE_FAKE_PAYMENTS: "false"
+      ENABLE_STRIPE_SANDBOX: "false"
+      ENABLE_PAYSTACK_SANDBOX: "false"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ./backend
+    environment: *api_environment
+    expose:
+      - "8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  gateway:
+    image: caddy:2-alpine
+    environment:
+      STAGING_BASIC_AUTH_USER: ${STAGING_BASIC_AUTH_USER:?Set STAGING_BASIC_AUTH_USER in Dokploy}
+      STAGING_BASIC_AUTH_HASH: ${STAGING_BASIC_AUTH_HASH:?Set STAGING_BASIC_AUTH_HASH in Dokploy}
+    volumes:
+      - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
+    expose:
+      - "8080"
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  order_maintenance:
+    build:
+      context: ./backend
+    environment: *api_environment
+    command: ["sh", "-ec", "while true; do python -m scripts.run_order_maintenance; sleep 300; done"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

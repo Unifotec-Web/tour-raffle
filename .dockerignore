@@ -1,0 +1,11 @@
+.git
+.next
+node_modules
+backend/.venv
+backend/.env
+backend/__pycache__
+backend/tests
+graphify-out
+*.log
+.env*
+tsconfig.tsbuildinfo
