@@ -73,9 +73,6 @@ services:
 
   gateway:
     image: caddy:2-alpine
-    environment:
-      STAGING_BASIC_AUTH_USER: ${STAGING_BASIC_AUTH_USER:?Set STAGING_BASIC_AUTH_USER in Dokploy}
-      STAGING_BASIC_AUTH_HASH: ${STAGING_BASIC_AUTH_HASH:?Set STAGING_BASIC_AUTH_HASH in Dokploy}
     volumes:
       - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
     expose:
